@@ -32,12 +32,21 @@ entries:
       url: /mydoc_overview.html
       output: web, pdf
 
-    - title: Features
-      url: /mydoc_supported_features.html
-      output: web, pdf
+      subfolders:
+      - title: Features
+        output: web, pdf
+        subfolderitems:
+
+        - title: Install IIS Prereqs
+          url: /doc_installIISPrereqs.html
+          output: web
+
+        - title: Create Handover Guide
+          url: /doc_createHandoverGuide.html
+          output: web
 
     - title: Enhancements
-      url: /mydoc_about.html
+      url: /mydoc_enhancements.html
       output: web, pdf
 
     - title: Contact us
