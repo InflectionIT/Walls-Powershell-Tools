@@ -33,16 +33,44 @@ entries:
       output: web, pdf
 
       subfolders:
-      - title: Features
+      - title: Commands
         output: web, pdf
         subfolderitems:
 
         - title: Install IIS Prereqs
-          url: /doc_installIISPrereqs.html
+          url: /mydoc_installIISPrereqs.html
+          output: web
+
+        - title: Install Extension Server Prereqs
+          url: /mydoc_installExtServerPrereqs.html
+          output: web
+
+        - title: Restart IIS app Pools
+          url: /mydoc_restartIIS.html
+          output: web
+
+        - title: Restart Scheduler Service
+          url: /mydoc_restartScheduler.html
+          output: web
+
+        - title: Kick off Self-Maintaining
+          url: /mydoc_selfMaintaining.html
+          output: web
+
+        - title: Kick off Full Repair
+          url: /mydoc_fullRepair.html
+          output: web
+
+        - title: Run Data Quality Checks
+          url: /mydoc_dataQuality.html
           output: web
 
         - title: Create Handover Guide
-          url: /doc_createHandoverGuide.html
+          url: /mydoc_HandoverGuide.html
+          output: web
+
+        - title: Initiate Auto-Escalation
+          url: /mydoc_autoescalation.html
           output: web
 
     - title: Enhancements

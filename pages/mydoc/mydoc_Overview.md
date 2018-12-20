@@ -1,6 +1,7 @@
 ---
 title: Walls PowerShell Tools Installation
-keywords:
+last_updated: December 20, 2018
+keywords: install, download, run, configure
 summary: "Covers the steps to download, configure, and run the PowerShell tools"
 sidebar: mydoc_sidebar
 permalink: mydoc_overview.html
@@ -25,3 +26,12 @@ If you need to install PowerShell, click
 ## Installing Walls PowerShell Tools
 
 The Walls PowerShell Tools package is stored on GitHub as an open-source project
+
+## Running Walls PowerShell Tools
+
+* Open an command prompt with 'run as administrator' privileges 
+* Navigate to Walls PowerShell Tools folder
+* Enter the following command ***powershell.exe .\walls.ps1*** and press \<Enter>
+* Follow menu prompts to use tools
+
+When finished using the tools, press ***q*** to quit
