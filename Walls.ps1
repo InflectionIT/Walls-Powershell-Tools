@@ -262,12 +262,12 @@ function GetExtensionList {
     $sql = 'SELECT * from (
             SELECT 0 as [ID], ''ALL'' as Extension from config
             UNION
-            SELECT ROW_NUMBER() over (ORDER BY ConfigVariable) as [ID], left(ConfigVariable, charindex('':'', ConfigVariable, 0) -1) as Extension from config where configvariable like ''%isactive'' and ConfigValue1 = 0
+            SELECT ROW_NUMBER() over (ORDER BY ConfigVariable) as [ID], left(ConfigVariable, charindex('':'', ConfigVariable, 0) -1) as Extension from config where configvariable like ''%isactive'' and ConfigValue1 = 1
             ) t
             order by t.[ID]'
 
     #Write-Host $sql
-    $script:extensionList = Invoke-SqlCommand -Query $sql -UseWindowsAuthentication "True"
+    $script:extensionList = Invoke-SqlCommand -Query $sql 
     #$script:extensionList | Format-Table
 }
 
@@ -288,6 +288,7 @@ function RunDataChecks {
     Write-Host $data.MatterNoKeyMap " Matters with no EntityKeyMap entry"
     Write-Host $data.MatterBadPairing " Matters with mismatched client/matter pairing in EntityKeyMap"
     Write-Host $data.DuplicateEntities " Duplicate user/group/client entities"
+    Write-Host $data.DuplicateMatterEntities "Duplicate matter entities"
     Write-Host $data.MatterBadClients " Matters with bad clients"
     Write-Host $data.EntityBlankSystemID " Entities with blank entityRemoteSystemId"
     Write-Host $data.EntitySpaces " Entity IDs with spaces in the name"
@@ -317,18 +318,16 @@ function GetDataCheckInfo {
         )
         WHERE e.EntityTypeId<>4"
 
+    # Duplicate matter entities
+    $DuplicateMatterEntities = Invoke-SqlCommand -Query "select count(*) as count from
+    (
+    select EntityRemoteSystemId, entitytypeid, parentRemoteSystemId, count(entityRemotesystemid) as count from dbo.entities group by EntityRemoteSystemId, entitytypeid, parentRemoteSystemId 
+    having entitytypeid=4 and count(entityRemotesystemid)>1
+    ) t"
+
     # Matters with bad clients
-    $MatterBadClients = Invoke-SqlCommand -Query "SELECT COUNT(*) as count from Entities e
-        join Entities e2 on e.EntityTypeId=e2.EntityTypeId and e.EntityId<>e2.EntityId
-        and 
-        (
-        e.EntityRemoteSystemId=e2.EntityRemoteSystemId
-        --or ISNULL(NULLIF(e.FinancialSystemId, ''), e.EntityRemoteSystemId)=ISNULL(NULLIF(e2.FinancialSystemId, e2.EntityRemoteSystemId), '')
-        --or ISNULL(NULLIF(e.TimeEntrySystemId, ''), e.EntityRemoteSystemId)=ISNULL(NULLIF(e2.TimeEntrySystemId, e2.EntityRemoteSystemId), '')
-        --or ISNULL(NULLIF(e.RecordsSystemId, ''), e.EntityRemoteSystemId)=ISNULL(NULLIF(e2.RecordsSystemId, e2.EntityRemoteSystemId), '')
-        --or ISNULL(NULLIF(e.WindowsNetworkLogon, ''), e.EntityRemoteSystemId)=ISNULL(NULLIF(e2.WindowsNetworkLogon, e2.EntityRemoteSystemId), '')
-        )
-        WHERE e.EntityTypeId<>4"
+    $MatterBadClients = Invoke-SqlCommand -Query "select count(*) as count
+    from dbo.entities where entitytypeid=4 and (ParentRemoteSystemId is null or ParentRemoteSystemId='' or ParentTypeId<>3)"
 
     # Entities with blank entityRemoteSystemID
     $EntityBlankSystemID = Invoke-SqlCommand -Query "select count(*) as count
@@ -344,12 +343,13 @@ function GetDataCheckInfo {
         OR (FinancialSystemId like '% ' OR FinancialSystemId like ' %'))"
 
     [PSCustomObject]@{
-        MatterNoKeyMap      = $MatterNoKeyMap.rows[0].count;
-        MatterBadPairing    = $MatterBadPairing.rows[0].count;
-        DuplicateEntities   = $DuplicateEntities.rows[0].count;
-        MatterBadClients    = $MatterBadClients.rows[0].count;
-        EntityBlankSystemID = $EntityBlankSystemID.rows[0].count;
-        EntitySpaces        = $EntitySpaces.rows[0].count;
+        MatterNoKeyMap          = $MatterNoKeyMap.rows[0].count;
+        MatterBadPairing        = $MatterBadPairing.rows[0].count;
+        DuplicateEntities       = $DuplicateEntities.rows[0].count;
+        DuplicateMatterEntities = $DuplicateMatterEntities.rows[0].count;
+        MatterBadClients        = $MatterBadClients.rows[0].count;
+        EntityBlankSystemID     = $EntityBlankSystemID.rows[0].count;
+        EntitySpaces            = $EntitySpaces.rows[0].count;
     }
 }
 
@@ -765,6 +765,7 @@ function GenerateHandoverGuide {
     Write-Host "Creating and sending email..."
     $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
     $headers.Add("Content-Type", "application/json")
+    $mergeUrl = 'https://www.webmerge.me/merge/87189/2wpdmn'
     #$response = Invoke-RestMethod $mergeUrl -Method Post -Headers $headers -Body $body
     Write-Host "Finished handover guide - sent to $email"
 }
@@ -895,9 +896,10 @@ function GenerateAutoEscalation {
             {0} Matters with no EntityKeyMap entry<br/>
             {1} Matters with mismatched client/matter pairing in EntityKeyMap<br/>
             {2} Duplicate user/group/client entities<br/>
-            {3} Matters with bad clients<br/>
-            {4} Entities with blank entityRemoteSystemId<br/>
-            {5} Entity IDs with spaces in the name<br/>" -f $data.MatterNoKeyMap, $data.MatterBadPairing, $data.DuplicateEntities, $data.MatterBadClients, $data.EntityBlankSystemID, $data.EntitySpaces 
+            {3} Duplicate matter entities<br/>
+            {4} Matters with bad clients<br/>
+            {5} Entities with blank entityRemoteSystemId<br/>
+            {6} Entity IDs with spaces in the name<br/>" -f $data.MatterNoKeyMap, $data.MatterBadPairing, $data.DuplicateEntities, $data.DuplicateMatterEntities, $data.MatterBadClients, $data.EntityBlankSystemID, $data.EntitySpaces 
 
         $extservicejobs = $extservicejobs | Where-Object {$null -ne $_.Messages} 
         if ($extservicejobs.Rows.Count -gt $htmlRows) {$extservicejobs = $extservicejobs[0..$htmlRows - 1]}
