@@ -533,7 +533,7 @@ function GenerateHandoverGuide {
     }
 
     function Get-IISAppPools {
-        $IIS_AppPools = Get-ChildItem �Path IIS:\AppPools\ | Out-String
+        $IIS_AppPools = Get-ChildItem -Path IIS:\AppPools\ | Out-String
         $IIS_AppPools = $IIS_AppPools.Split("`n")
         $table = New-Object system.Data.DataTable ""
         $col1 = New-Object system.Data.DataColumn 'line', ([string])
