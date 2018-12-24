@@ -11,4 +11,4 @@ toc: false
 
 ## Support
 
-These tools are provided as-is. InflectionIT can assist with errors, updates, and modifications to the code
+These tools are provided as-is. InflectionIT will try to assist with errors, updates, and modifications to the code.

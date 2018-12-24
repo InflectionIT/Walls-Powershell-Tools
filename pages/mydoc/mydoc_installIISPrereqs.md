@@ -22,3 +22,5 @@ This command also adds shortcuts to the desktop for Internet Explorer, Services 
 
 {% include image.html file="IISPrereqs.png" alt="Command output" caption="Results of command execution" %}
 
+This command should be executed on the IIS server where the Walls application will be installed.
+

@@ -44,10 +44,12 @@ When running the script, you will be prompted for a variety of information neede
 * **Client/Matter Source DB**: Enter the database name where the clients & matters are being synced from
 * **Customizations**: Enter a description of any customizations that have been implemented
 
+{% include image.html file="Handover.png" alt="Command output" caption="Handover Guide questions" %}
+
 ## Output 
 
 The information gathered is sent to InflectionIT via WebMerge (https://www.webmerge.me/) for Handover Guide creation.
 
-Additionally, all of the data captured is stored in JSON format in the "body.txt" file saved in the script folder.
+Additionally, all of the data captured is stored in JSON format in the "HandoverGuideBody.txt" file saved in the script folder.
 
-{% include image.html file="IISPrereqs.png" alt="Command output" caption="Results of command execution" %}
+{% include image.html file="HandoverDone.png" alt="Command output" caption="Results of command execution" %}

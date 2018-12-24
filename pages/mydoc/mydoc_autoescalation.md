@@ -30,8 +30,10 @@ When running the script, you will be prompted for some information needed to com
 * **Description**: Enter a short description of the question or issue
 * **Screenshot**: Indicate if you would like to include a screenshot. If you have multiple monitors, the screenshot will include captures from both monitors
 
+{% include image.html file="AutoEscalation.png" alt="Command output" caption="Auto escalation questions" %}
+
 ## Output 
 
 The information gathered is sent via email for escalation management. The email includes attachements of the necessary data, including a zip file of the logs, the configuration settings in CSV format, the error logs in CSV format, and the optional screenshot.
 
-{% include image.html file="IISPrereqs.png" alt="Command output" caption="Results of command execution" %}
+{% include image.html file="AutoEscalationDone.png" alt="Command output" caption="Results of command execution" %}

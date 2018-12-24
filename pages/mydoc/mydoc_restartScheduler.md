@@ -11,3 +11,5 @@ toc: false
 ## Overview
 
 This command restarts the Scheduler Service (WBSchedulerService)
+
+{% include image.html file="SchedulerService.png" alt="Command output" caption="Results of command execution" %}

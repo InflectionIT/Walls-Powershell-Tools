@@ -12,5 +12,5 @@ toc: false
 
 This command kicks off self-maintaining for all walls by initiating a call to the **PerformSelfMaintaining** API method located at *http://localhost/APIService/APIService.svc*
 
-{% include image.html file="IISPrereqs.png" alt="Command output" caption="Results of command execution" %}
+{% include image.html file="SelfMaintaining.png" alt="Command output" caption="Results of command execution" %}
 

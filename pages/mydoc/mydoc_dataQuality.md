@@ -27,9 +27,9 @@ If any of these data integrity issues are found, please make the necessary chang
 
 ## Output 
 
-The command will indicate that the full repair has started
+The command will indicate any data integrity issues that need to be resolved.
 
-{% include image.html file="IISPrereqs.png" alt="Command output" caption="Results of command execution" %}
+{% include image.html file="DataQuality.png" alt="Command output" caption="Results of command execution" %}
 
 ## SQL commands
 

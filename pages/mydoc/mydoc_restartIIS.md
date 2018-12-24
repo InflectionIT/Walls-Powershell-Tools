@@ -17,5 +17,6 @@ This command restarts the IIS App Pools related to Walls, including:
 * CentralAdminAppPool
 * MatterTeamManagerAppPool
 
-{% include image.html file="IISPrereqs.png" alt="Command output" caption="Results of command execution" %}
+{% include image.html file="IISAppPools.png" alt="Command output" caption="Results of command execution" %}
 
+This command should be executed on the IIS server where the Walls application is installed.

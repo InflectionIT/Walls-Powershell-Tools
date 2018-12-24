@@ -16,5 +16,7 @@ This command installs the necessary Windows components for the Walls Extension S
 
 This command also adds shortcuts to the desktop for Internet Explorer and Services Manager
 
-{% include image.html file="IISPrereqs.png" alt="Command output" caption="Results of command execution" %}
+{% include image.html file="ExtServerPrereqs.png" alt="Command output" caption="Results of command execution" %}
+
+This command should be executed on the server where the Extension Server application will be installed.
 

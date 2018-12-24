@@ -14,11 +14,11 @@ This command performs a Full Repair on the chosen extension by initiating a call
 
 When the command is executed, you are given a list of active Extensions to choose from. Enter the number of the extension you want to repair and press **\<Enter>**
 
-{% include image.html file="IISPrereqs.png" alt="Command output" caption="Results of command execution" %}
+{% include image.html file="ExtensionList.png" alt="Extension List" caption="List of active Extensions" %}
 
 ## Output 
 
 The command will indicate that the full repair has started
 
-{% include image.html file="IISPrereqs.png" alt="Command output" caption="Results of command execution" %}
+{% include image.html file="FullRepair.png" alt="Command output" caption="Results of command execution" %}
 
