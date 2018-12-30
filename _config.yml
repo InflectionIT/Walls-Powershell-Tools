@@ -3,13 +3,13 @@ repository: tomjoht/documentation-theme-jekyll
 output: web
 # this property is useful for conditional filtering of content that is separate from the PDF.
 
-topnav_title: InflectionIT Walls PowerShell Tools
+topnav_title: Inflection IT Walls PowerShell Tools
 # this appears on the top navigation bar next to the home button
 
-site_title: InflectionIT Walls PowerShell Tools
+site_title: Inflection IT Walls PowerShell Tools
 # this appears in the html browser tab for the site title (seen mostly by search engines, not users)
 
-company_name: InflectionIT
+company_name: Inflection IT
 # this appears in the footer
 
 github_editme_path: 
@@ -35,9 +35,9 @@ exclude:
   - .gitignore
 # these are the files and directories that jekyll will exclude from the build
 
-feedback_subject_line: InflectionIT Walls PowerShell Tools
+feedback_subject_line: Inflection IT Walls PowerShell Tools
 
-feedback_email: steve.surrette@inflectionit.com
+feedback_email: contact@inflectionit.com
 # used as a contact email for the Feedback link in the top navigation bar
 
 # feedback_disable: true
@@ -107,7 +107,7 @@ sidebars:
 - product2_sidebar
 - other
 
-description: "Documentation for InflectionIT's Walls PowerShell Tools"
+description: "Documentation for Inflection IT's Walls PowerShell Tools"
 # the description is used in the feed.xml file
 
 # needed for sitemap.xml file only

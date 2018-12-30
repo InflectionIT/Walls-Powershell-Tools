@@ -10,7 +10,7 @@ toc: false
 
 ## Overview
 
-This command gathers a variety of data (including logs) from the Walls installation and sends that data to InflectionIT to help resolve a problem or issue. 
+This command gathers a variety of data (including logs) from the Walls installation and sends that data to Inflection IT to help resolve a problem or issue. 
 
 ## Data Gathered
 

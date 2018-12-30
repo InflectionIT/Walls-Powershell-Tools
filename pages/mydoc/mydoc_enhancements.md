@@ -7,4 +7,4 @@ permalink: mydoc_enhancements.html
 folder: mydoc
 ---
 
-We hope to continue to improve these tools to make them as useful as possible. If you have any suggestions for features or enhancements that you'd like to see, please email us [here](mailto://steve.surrette@inflectionit.com) or use the Feedback button on the top navigation. 
+We hope to continue to improve these tools to make them as useful as possible. If you have any suggestions for features or enhancements that you'd like to see, please email us [here](mailto://contact@inflectionit.com) or use the Feedback button on the top navigation. 

@@ -10,7 +10,7 @@ toc: false
 
 ## Overview
 
-This command gathers multiple data points from the Walls installation and sends that data to InflectionIT to generate a Handover Guide.
+This command gathers multiple data points from the Walls installation and sends that data to Inflection IT to generate a Handover Guide.
 
 ## Data Gathered
 
@@ -48,7 +48,7 @@ When running the script, you will be prompted for a variety of information neede
 
 ## Output 
 
-The information gathered is sent to InflectionIT via WebMerge (https://www.webmerge.me/) for Handover Guide creation.
+The information gathered is sent to Inflection IT via WebMerge (https://www.webmerge.me/) for Handover Guide creation.
 
 Additionally, all of the data captured is stored in JSON format in the "HandoverGuideBody.txt" file saved in the script folder.
 

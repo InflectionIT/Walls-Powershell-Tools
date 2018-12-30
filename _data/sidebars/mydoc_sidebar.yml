@@ -77,7 +77,7 @@ entries:
       url: /mydoc_enhancements.html
       output: web, pdf
 
-    - title: Contact us
+    - title: Support
       url: /mydoc_support.html
       output: web, pdf
 
