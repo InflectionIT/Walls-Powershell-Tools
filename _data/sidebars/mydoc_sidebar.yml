@@ -28,7 +28,7 @@ entries:
       output: web, pdf
       type: homepage
 
-    - title: Installation / Quick start
+    - title: Getting Started
       url: /mydoc_overview.html
       output: web, pdf
 
