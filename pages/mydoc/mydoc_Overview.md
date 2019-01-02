@@ -48,6 +48,9 @@ There are two ways to run the Walls PowerShell Tools - via command prompt or Pow
 * Open an command prompt with 'run as administrator' privileges 
 * Navigate to Walls PowerShell Tools folder where the scripts are located
 * Enter the following command ***powershell.exe .\walls.ps1*** and press \<Enter>
+
+{% include warning.html content="If you receive a warning or error when attempting to run the script, please see the [Troubleshooting](mydoc_troubleshooting.html) page" %}
+
 * Follow menu prompts to use tools
 {% include image.html file="ToolsMainMenu.jpg" alt="Main menu" caption="Running the script" %}
 * When finished using the tools, press ***q*** to quit

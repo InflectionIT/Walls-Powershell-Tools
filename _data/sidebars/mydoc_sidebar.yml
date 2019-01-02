@@ -77,6 +77,10 @@ entries:
       url: /mydoc_enhancements.html
       output: web, pdf
 
+    - title: Troubleshooting
+      url: /mydoc_troubleshooting.html
+      output: web, pdf
+
     - title: Support
       url: /mydoc_support.html
       output: web, pdf
