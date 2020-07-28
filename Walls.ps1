@@ -1,3 +1,4 @@
+cd $PSScriptRoot
 $config = Import-PowerShellDataFile .\config.psd1
 $script:extensionList = $null
 
@@ -902,11 +903,11 @@ function GenerateAutoEscalation {
             {6} Entity IDs with spaces in the name<br/>" -f $data.MatterNoKeyMap, $data.MatterBadPairing, $data.DuplicateEntities, $data.DuplicateMatterEntities, $data.MatterBadClients, $data.EntityBlankSystemID, $data.EntitySpaces 
 
         $extservicejobs = $extservicejobs | Where-Object {$null -ne $_.Messages} 
-        if ($extservicejobs.Rows.Count -gt $htmlRows) {$extservicejobs = $extservicejobs[0..$htmlRows - 1]}
+        if ($extservicejobs.Rows.Count -gt $htmlRows) {$extservicejobs = $extservicejobs[0..($htmlRows - 1)]}
         $extservicejobsHTML = $extservicejobs | ConvertTo-Html -Fragment | Out-String
         
         $errorLog = $errorLog | Where-Object {$_.LogLevel -ne "Info"}  #Another Example: {$_.LogMessage -like 'Started*' }
-        if ($errorLog.Rows.Count -gt $htmlRows) { $errorLog = $errorLog[0..$htmlRows - 1] }
+        if ($errorLog.Rows.Count -gt $htmlRows) { $errorLog = $errorLog[0..($htmlRows - 1)] }
         $errorLogHTML = $errorLog | Select ServiceType, ServiceId, LogLevel, LogMessage, LogException, Created | ConvertTo-Html -Fragment | Out-String
     
         $configs = Invoke-SqlCommand -Query "select ConfigVariable, ConfigValue1, ConfigValue2, Category from config where ConfigVariable not like '%password%' 
