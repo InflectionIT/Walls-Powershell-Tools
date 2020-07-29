@@ -767,7 +767,7 @@ function GenerateHandoverGuide {
     $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
     $headers.Add("Content-Type", "application/json")
     $mergeUrl = 'https://www.webmerge.me/merge/87189/2wpdmn'
-    #$response = Invoke-RestMethod $mergeUrl -Method Post -Headers $headers -Body $body
+    $response = Invoke-RestMethod $mergeUrl -Method Post -Headers $headers -Body $body
     Write-Host "Finished handover guide - sent to $email"
 }
 
