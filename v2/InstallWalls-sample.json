@@ -1,0 +1,55 @@
+{
+  "lastUpdated":  null,
+  "database":  {
+      "Connectionstring": "Data Source=demo.inflectionit.com;Initial Catalog=walls;User ID=sa;Password=Int@pp$1;",             
+      "Server":  "demo.inflectionit.com",
+      "Database":  "walls",
+      "User":  "sa",
+      "Password":  "Int@pp$1",
+      "UseSSP":  "false"
+  },
+  "serviceaccount":  {
+      "username":  "firm\\srv_walls",
+      "password":  "pswd1234"
+  },
+  "walls":  {
+      "installWalls":  true,
+      "virtualdir":  "mtm",
+      "server":  "EC2AMAZ-174BM17"
+  },
+  "extensionservice":  {
+      "installExtensionService":  true,
+      "servers":  [
+                      "EC2AMAZ-174BM17",
+                      "WinServerPD01"
+                  ]
+  },
+  "apiservice":  {
+      "installAPIService":  true,
+      "virtualdir":  "APIService",
+      "server":  "EC2AMAZ-174BM17"
+  },
+  "schedulerservice":  {
+      "installSchedulerService":  true,
+      "server":  "EC2AMAZ-174BM17"
+  },
+  "teammanager":  {
+      "installTeamManager":  false,
+      "virtualdir":  "MTM",
+      "server":  "EC2AMAZ-174BM17"
+  },
+  "activitytracker":  {
+      "installActivityTracker":  false,
+      "virtualdir":  "ActivityTracker",
+      "server": "",
+      "IntDBHost":  "asdf",
+      "IntDBName":  "asdf",
+      "IntDBUser":  "asdf",
+      "IntDBPassword":  "asdf"
+  },
+  "centraladmin":  {
+      "installcentraladmin":  false,
+      "virtualdir":  "asdf",
+      "server":  "server5"
+  }
+}

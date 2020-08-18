@@ -1,0 +1,5028 @@
+#region Job Tracker
+$JobTrackerList = New-Object System.Collections.ArrayList
+function Add-JobTracker
+{
+	<#
+		.SYNOPSIS
+			Add a new job to the JobTracker and starts the timer.
+	
+		.DESCRIPTION
+			Add a new job to the JobTracker and starts the timer.
+	
+		.PARAMETER  Name
+			The name to assign to the Job
+	
+		.PARAMETER  JobScript
+			The script block that the Job will be performing. 
+			Important: Do not access form controls from this script block.
+	
+		.PARAMETER ArgumentList
+			The arguments to pass to the job
+	
+		.PARAMETER  CompleteScript
+			The script block that will be called when the job is complete.
+			The job is passed as an argument. The Job argument is null when the job fails.
+	
+		.PARAMETER  UpdateScript
+			The script block that will be called each time the timer ticks. 
+			The job is passed as an argument. Use this to get the Job's progress.
+	
+		.EXAMPLE
+			Add-JobTracker -Name 'JobName' `
+			-JobScript {	
+				Param($Argument1)#Pass any arguments using the ArgumentList parameter
+				#Important: Do not access form controls from this script block.
+				Get-WmiObject Win32_Process -Namespace "root\CIMV2"
+			}`
+			-CompletedScript {
+				Param($Job)		
+				$results = Receive-Job -Job $Job		
+			}`
+			-UpdateScript {
+				Param($Job)
+				#$results = Receive-Job -Job $Job -Keep
+			}
+	
+		.LINK
+			
+	#>
+	
+	Param (
+		[ValidateNotNull()]
+		[Parameter(Mandatory = $true)]
+		$Name,
+		[ValidateNotNull()]
+		[Parameter(Mandatory = $true)]
+		[ScriptBlock]$JobScript,
+		$ArgumentList = $null,
+		[ScriptBlock]$CompletedScript,
+		[ScriptBlock]$UpdateScript)
+	
+	#Start the Job
+	$job = Start-Job -Name $Name -ScriptBlock $JobScript -ArgumentList $ArgumentList
+	
+	if ($null -ne $job)
+	{
+		#Create a Custom Object to keep track of the Job & Script Blocks
+		$members = @{
+			'Job' = $Job;
+			'CompleteScript' = $CompletedScript;
+			'UpdateScript' = $UpdateScript
+		}
+		
+		$psObject = New-Object System.Management.Automation.PSObject -Property $members
+		
+		[void]$JobTrackerList.Add($psObject)
+		
+		#Start the Timer
+		if (-not $timerJobTracker.Enabled)
+		{
+			$timerJobTracker.Start()
+		}
+	}
+	elseif ($null -ne $CompletedScript)
+	{
+		#Failed
+		Invoke-Command -ScriptBlock $CompletedScript -ArgumentList $null
+	}
+	
+}
+
+function Update-JobTracker
+{
+	<#
+		.SYNOPSIS
+			Checks the status of each job on the list.
+	#>
+	
+	#Poll the jobs for status updates
+	$timerJobTracker.Stop() #Freeze the Timer
+	
+	for ($index = 0; $index -lt $JobTrackerList.Count; $index++)
+	{
+		$psObject = $JobTrackerList[$index]
+		
+		if ($null -ne $psObject)
+		{
+			if ($null -ne $psObject.Job)
+			{
+				if ($psObject.Job.State -ne "Running")
+				{
+					#Call the Complete Script Block
+					if ($null -ne $psObject.CompleteScript)
+					{
+						#$results = Receive-Job -Job $psObject.Job
+						Invoke-Command -ScriptBlock $psObject.CompleteScript -ArgumentList $psObject.Job
+					}
+					
+					$JobTrackerList.RemoveAt($index)
+					Remove-Job -Job $psObject.Job
+					$index-- #Step back so we don't skip a job
+				}
+				elseif ($null -ne $psObject.UpdateScript)
+				{
+					#Call the Update Script Block
+					Invoke-Command -ScriptBlock $psObject.UpdateScript -ArgumentList $psObject.Job
+				}
+			}
+		}
+		else
+		{
+			$JobTrackerList.RemoveAt($index)
+			$index-- #Step back so we don't skip a job
+		}
+	}
+	
+	if ($JobTrackerList.Count -gt 0)
+	{
+		$timerJobTracker.Start() #Resume the timer	
+	}
+}
+
+function Stop-JobTracker
+{
+	<#
+		.SYNOPSIS
+			Stops and removes all Jobs from the list.
+	#>
+	#Stop the timer
+	$timerJobTracker.Stop()
+	
+	#Remove all the jobs
+	while ($JobTrackerList.Count -gt 0)
+	{
+		$job = $JobTrackerList[0].Job
+		$JobTrackerList.RemoveAt(0)
+		Stop-Job $job
+		Remove-Job $job
+	}
+}
+#endregion
+$buttonExtensionServiceJobs_Click = {
+	
+	$buttonExtensionServiceJobs.Enabled = $false
+	$OutputText.Text = "Querying ExtensionServiceJobs table...`n"
+	$OutputTabs.SelectedTab = $textTab
+	#$buttonSearch.Enabled = $false
+	#Create a New Job using the Job Tracker
+	Add-JobTracker -Name 'JobName' -ArgumentList $TextboxConnectString.Text `
+				   -JobScript {
+		#--------------------------------------------f------
+		#TODO: Set a script block
+		#Important: Do not access form controls from this script block.
+		
+		Param ($connectString) #Pass any arguments using the ArgumentList parameter
+		
+		#	---------------------------------
+		#	Sample Code to Load Sortable Data
+		#	---------------------------------
+		#Get-WmiObject Win32_Process -Namespace 'Root\CIMV2'
+		
+		$WallsConnectString = $connectString
+		$sqlCommand = "select * from extensionservicejobs"
+		#$sqlCommand = "select * from entities"
+		$connectionString = $wallsConnectString
+		
+		$connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
+		$command = new-object system.data.sqlclient.sqlcommand($sqlCommand, $connection)
+		try
+		{
+			$connection.Open()
+		}
+		catch
+		{
+			"connectError"
+			exit
+		}
+		
+		$adapter = New-Object System.Data.sqlclient.sqlDataAdapter $command
+		$dataset = New-Object System.Data.DataSet
+		$adapter.Fill($dataSet) | Out-Null
+		
+		$connection.Close()
+		$dataSet.Tables
+		#$results = $response.rows
+		
+		#--------------------------------------------------
+	}`
+				   -CompletedScript {
+		Param ($Job)
+		$results = Receive-Job -Job $Job
+		
+		#Enable the Button
+		$buttonExtensionServiceJobs.ImageIndex = -1
+		$buttonExtensionServiceJobs.Enabled = $true
+		
+		if ($results -eq "connectError")
+		{
+			$OutputText.Text += "Connection string failed`n"
+		}
+		else
+		{
+			$results = ConvertTo-DataTable -InputObject $results -FilterWMIProperties
+			if ($results)
+			{
+				Load-DataGridView -DataGridView $datagridviewResults -Item $results -AutoSizeColumns DisplayedCells
+			}
+			else
+			{
+				$datagridviewResults.DataSource = $null
+			}
+			
+			$rowCount = $datagridviewResults.RowCount
+			if ($rowCount -eq 0)
+			{
+				$OutputText.Text += "The ExtensionServiceJobs table is empty `n"
+			}
+			else
+			{
+				$OutputText.Text += "$rowCount rows in Extension Service Jobs `n"
+				$OutputTabs.SelectedTab = $tableTab
+			}
+		}
+		
+	}`
+				   -UpdateScript {
+		Param ($Job)
+		$results = Receive-Job -Job $Job -Keep
+		#Animate the Button
+		if ($null -ne $buttonExtensionServiceJobs.ImageList)
+		{
+			if ($buttonExtensionServiceJobs.ImageIndex -lt $buttonExtensionServiceJobs.ImageList.Images.Count - 1)
+			{
+				$buttonExtensionServiceJobs.ImageIndex += 1
+			}
+			else
+			{
+				$buttonExtensionServiceJobs.ImageIndex = 0
+			}
+		}
+	}
+}
+
+$textboxSearch_KeyDown = [System.Windows.Forms.KeyEventHandler]{
+	#Event Argument: $_ = [System.Windows.Forms.KeyEventArgs]
+	if ($_.KeyCode -eq 'Enter' -and $buttonSearch.Enabled)
+	{
+		SearchGrid
+		$_.SuppressKeyPress = $true
+	}
+}
+
+#region Control Helper Functions
+function Update-ListBox
+{
+<#
+	.SYNOPSIS
+		This functions helps you load items into a ListBox or CheckedListBox.
+	
+	.DESCRIPTION
+		Use this function to dynamically load items into the ListBox control.
+	
+	.PARAMETER ListBox
+		The ListBox control you want to add items to.
+	
+	.PARAMETER Items
+		The object or objects you wish to load into the ListBox's Items collection.
+	
+	.PARAMETER DisplayMember
+		Indicates the property to display for the items in this control.
+	
+	.PARAMETER Append
+		Adds the item(s) to the ListBox without clearing the Items collection.
+	
+	.EXAMPLE
+		Update-ListBox $ListBox1 "Red", "White", "Blue"
+	
+	.EXAMPLE
+		Update-ListBox $listBox1 "Red" -Append
+		Update-ListBox $listBox1 "White" -Append
+		Update-ListBox $listBox1 "Blue" -Append
+	
+	.EXAMPLE
+		Update-ListBox $listBox1 (Get-Process) "ProcessName"
+	
+	.NOTES
+		Additional information about the function.
+#>
+	
+	param
+	(
+		[Parameter(Mandatory = $true)]
+		[ValidateNotNull()]
+		[System.Windows.Forms.ListBox]
+		$ListBox,
+		[Parameter(Mandatory = $true)]
+		[ValidateNotNull()]
+		$Items,
+		[Parameter(Mandatory = $false)]
+		[string]
+		$DisplayMember,
+		[switch]
+		$Append
+	)
+	
+	if (-not $Append)
+	{
+		$listBox.Items.Clear()
+	}
+	
+	if ($Items -is [System.Windows.Forms.ListBox+ObjectCollection] -or $Items -is [System.Collections.ICollection])
+	{
+		$listBox.Items.AddRange($Items)
+	}
+	elseif ($Items -is [System.Collections.IEnumerable])
+	{
+		$listBox.BeginUpdate()
+		foreach ($obj in $Items)
+		{
+			$listBox.Items.Add($obj)
+		}
+		$listBox.EndUpdate()
+	}
+	else
+	{
+		$listBox.Items.Add($Items)
+	}
+	
+	$listBox.DisplayMember = $DisplayMember
+}
+
+function Update-ComboBox
+{
+<#
+	.SYNOPSIS
+		This functions helps you load items into a ComboBox.
+	
+	.DESCRIPTION
+		Use this function to dynamically load items into the ComboBox control.
+	
+	.PARAMETER ComboBox
+		The ComboBox control you want to add items to.
+	
+	.PARAMETER Items
+		The object or objects you wish to load into the ComboBox's Items collection.
+	
+	.PARAMETER DisplayMember
+		Indicates the property to display for the items in this control.
+	
+	.PARAMETER Append
+		Adds the item(s) to the ComboBox without clearing the Items collection.
+	
+	.EXAMPLE
+		Update-ComboBox $combobox1 "Red", "White", "Blue"
+	
+	.EXAMPLE
+		Update-ComboBox $combobox1 "Red" -Append
+		Update-ComboBox $combobox1 "White" -Append
+		Update-ComboBox $combobox1 "Blue" -Append
+	
+	.EXAMPLE
+		Update-ComboBox $combobox1 (Get-Process) "ProcessName"
+	
+	.NOTES
+		Additional information about the function.
+#>
+	
+	param
+	(
+		[Parameter(Mandatory = $true)]
+		[ValidateNotNull()]
+		[System.Windows.Forms.ComboBox]
+		$ComboBox,
+		[Parameter(Mandatory = $true)]
+		[ValidateNotNull()]
+		$Items,
+		[Parameter(Mandatory = $false)]
+		[string]
+		$DisplayMember,
+		[switch]
+		$Append
+	)
+	
+	if (-not $Append)
+	{
+		$ComboBox.Items.Clear()
+	}
+	
+	if ($Items -is [Object[]])
+	{
+		$ComboBox.Items.AddRange($Items)
+	}
+	elseif ($Items -is [System.Collections.IEnumerable])
+	{
+		$ComboBox.BeginUpdate()
+		foreach ($obj in $Items)
+		{
+			$ComboBox.Items.Add($obj)
+		}
+		$ComboBox.EndUpdate()
+	}
+	else
+	{
+		$ComboBox.Items.Add($Items)
+	}
+	
+	$ComboBox.DisplayMember = $DisplayMember
+}
+
+function Update-DataGridView
+{
+	<#
+	.SYNOPSIS
+		This functions helps you load items into a DataGridView.
+
+	.DESCRIPTION
+		Use this function to dynamically load items into the DataGridView control.
+
+	.PARAMETER  DataGridView
+		The DataGridView control you want to add items to.
+
+	.PARAMETER  Item
+		The object or objects you wish to load into the DataGridView's items collection.
+	
+	.PARAMETER  DataMember
+		Sets the name of the list or table in the data source for which the DataGridView is displaying data.
+
+	.PARAMETER AutoSizeColumns
+	    Resizes DataGridView control's columns after loading the items.
+	#>
+	Param (
+		[ValidateNotNull()]
+		[Parameter(Mandatory=$true)]
+		[System.Windows.Forms.DataGridView]$DataGridView,
+		[ValidateNotNull()]
+		[Parameter(Mandatory=$true)]
+		$Item,
+	    [Parameter(Mandatory=$false)]
+		[string]$DataMember,
+		[System.Windows.Forms.DataGridViewAutoSizeColumnMode]$AutoSizeColumns = 'None'
+	)
+	$DataGridView.SuspendLayout()
+	$DataGridView.DataMember = $DataMember
+	
+	if ($Item -is [System.Data.DataSet] -and $Item.Tables.Count -gt 0)
+	{
+		$DataGridView.DataSource = $Item.Tables[0]
+	}
+	elseif ($Item -is [System.ComponentModel.IListSource]`
+	-or $Item -is [System.ComponentModel.IBindingList] -or $Item -is [System.ComponentModel.IBindingListView] )
+	{
+		$DataGridView.DataSource = $Item
+	}
+	else
+	{
+		$array = New-Object System.Collections.ArrayList
+		
+		if ($Item -is [System.Collections.IList])
+		{
+			$array.AddRange($Item)
+		}
+		else
+		{
+			$array.Add($Item)
+		}
+		$DataGridView.DataSource = $array
+	}
+	
+	if ($AutoSizeColumns -ne 'None')
+	{
+		$DataGridView.AutoResizeColumns($AutoSizeColumns)
+	}
+	
+	$DataGridView.ResumeLayout()
+}
+
+function Sort-ListViewColumn 
+{
+	<#
+	.SYNOPSIS
+		Sort the ListView's item using the specified column.
+
+	.DESCRIPTION
+		Sort the ListView's item using the specified column.
+		This function uses Add-Type to define a class that sort the items.
+		The ListView's Tag property is used to keep track of the sorting.
+
+	.PARAMETER ListView
+		The ListView control to sort.
+
+	.PARAMETER ColumnIndex
+		The index of the column to use for sorting.
+		
+	.PARAMETER  SortOrder
+		The direction to sort the items. If not specified or set to None, it will toggle.
+	
+	.EXAMPLE
+		Sort-ListViewColumn -ListView $listview1 -ColumnIndex 0
+#>
+	param(	
+			[ValidateNotNull()]
+			[Parameter(Mandatory=$true)]
+			[System.Windows.Forms.ListView]$ListView,
+			[Parameter(Mandatory=$true)]
+			[int]$ColumnIndex,
+			[System.Windows.Forms.SortOrder]$SortOrder = 'None')
+	
+	if(($ListView.Items.Count -eq 0) -or ($ColumnIndex -lt 0) -or ($ColumnIndex -ge $ListView.Columns.Count))
+	{
+		return;
+	}
+	
+	#region Define ListViewItemComparer
+		try{
+		[ListViewItemComparer] | Out-Null
+	}
+	catch{
+	Add-Type -ReferencedAssemblies ('System.Windows.Forms') -TypeDefinition  @" 
+	using System;
+	using System.Windows.Forms;
+	using System.Collections;
+	public class ListViewItemComparer : IComparer
+	{
+	    public int column;
+	    public SortOrder sortOrder;
+	    public ListViewItemComparer()
+	    {
+	        column = 0;
+			sortOrder = SortOrder.Ascending;
+	    }
+	    public ListViewItemComparer(int column, SortOrder sort)
+	    {
+	        this.column = column;
+			sortOrder = sort;
+	    }
+	    public int Compare(object x, object y)
+	    {
+			if(column >= ((ListViewItem)x).SubItems.Count)
+				return  sortOrder == SortOrder.Ascending ? -1 : 1;
+		
+			if(column >= ((ListViewItem)y).SubItems.Count)
+				return sortOrder == SortOrder.Ascending ? 1 : -1;
+		
+			if(sortOrder == SortOrder.Ascending)
+	        	return String.Compare(((ListViewItem)x).SubItems[column].Text, ((ListViewItem)y).SubItems[column].Text);
+			else
+				return String.Compare(((ListViewItem)y).SubItems[column].Text, ((ListViewItem)x).SubItems[column].Text);
+	    }
+	}
+"@  | Out-Null
+	}
+	#endregion
+	
+	if($ListView.Tag -is [ListViewItemComparer])
+	{
+		#Toggle the Sort Order
+		if($SortOrder -eq [System.Windows.Forms.SortOrder]::None)
+		{
+			if($ListView.Tag.column -eq $ColumnIndex -and $ListView.Tag.sortOrder -eq 'Ascending')
+			{
+				$ListView.Tag.sortOrder = 'Descending'
+			}
+			else
+			{
+				$ListView.Tag.sortOrder = 'Ascending'
+			}
+		}
+		else
+		{
+			$ListView.Tag.sortOrder = $SortOrder
+		}
+		
+		$ListView.Tag.column = $ColumnIndex
+		$ListView.Sort()#Sort the items
+	}
+	else
+	{
+		if($SortOrder -eq [System.Windows.Forms.SortOrder]::None)
+		{
+			$SortOrder = [System.Windows.Forms.SortOrder]::Ascending	
+		}
+		
+		#Set to Tag because for some reason in PowerShell ListViewItemSorter prop returns null
+		$ListView.Tag = New-Object ListViewItemComparer ($ColumnIndex, $SortOrder) 
+		$ListView.ListViewItemSorter = $ListView.Tag #Automatically sorts
+	}
+}
+
+
+function Add-ListViewItem
+{
+<#
+	.SYNOPSIS
+		Adds the item(s) to the ListView and stores the object in the ListViewItem's Tag property.
+
+	.DESCRIPTION
+		Adds the item(s) to the ListView and stores the object in the ListViewItem's Tag property.
+
+	.PARAMETER ListView
+		The ListView control to add the items to.
+
+	.PARAMETER Items
+		The object or objects you wish to load into the ListView's Items collection.
+		
+	.PARAMETER  ImageIndex
+		The index of a predefined image in the ListView's ImageList.
+	
+	.PARAMETER  SubItems
+		List of strings to add as Subitems.
+	
+	.PARAMETER Group
+		The group to place the item(s) in.
+	
+	.PARAMETER Clear
+		This switch clears the ListView's Items before adding the new item(s).
+	
+	.EXAMPLE
+		Add-ListViewItem -ListView $listview1 -Items "Test" -Group $listview1.Groups[0] -ImageIndex 0 -SubItems "Installed"
+#>
+	
+	Param( 
+	[ValidateNotNull()]
+	[Parameter(Mandatory=$true)]
+	[System.Windows.Forms.ListView]$ListView,
+	[ValidateNotNull()]
+	[Parameter(Mandatory=$true)]
+	$Items,
+	[int]$ImageIndex = -1,
+	[string[]]$SubItems,
+	$Group,
+	[switch]$Clear)
+	
+	if($Clear)
+	{
+		$ListView.Items.Clear();
+    }
+    
+    $lvGroup = $null
+    if ($Group -is [System.Windows.Forms.ListViewGroup])
+    {
+        $lvGroup = $Group
+    }
+    elseif ($Group -is [string])
+    {
+        #$lvGroup = $ListView.Group[$Group] # Case sensitive
+        foreach ($groupItem in $ListView.Groups)
+        {
+            if ($groupItem.Name -eq $Group)
+            {
+                $lvGroup = $groupItem
+                break
+            }
+        }
+        
+        if ($null -eq $lvGroup)
+        {
+            $lvGroup = $ListView.Groups.Add($Group, $Group)
+        }
+    }
+    
+	if($Items -is [Array])
+	{
+		$ListView.BeginUpdate()
+		foreach ($item in $Items)
+		{		
+			$listitem  = $ListView.Items.Add($item.ToString(), $ImageIndex)
+			#Store the object in the Tag
+			$listitem.Tag = $item
+			
+			if($null -ne $SubItems)
+			{
+				$listitem.SubItems.AddRange($SubItems)
+			}
+			
+			if($null -ne $lvGroup)
+			{
+				$listitem.Group = $lvGroup
+			}
+		}
+		$ListView.EndUpdate()
+	}
+	else
+	{
+		#Add a new item to the ListView
+		$listitem  = $ListView.Items.Add($Items.ToString(), $ImageIndex)
+		#Store the object in the Tag
+		$listitem.Tag = $Items
+		
+		if($null -ne $SubItems)
+		{
+			$listitem.SubItems.AddRange($SubItems)
+		}
+		
+		if($null -ne $lvGroup)
+		{
+			$listitem.Group = $lvGroup
+		}
+	}
+}
+
+
+function Load-ListBox 
+{
+<#
+	.SYNOPSIS
+		This functions helps you load items into a ListBox or CheckedListBox.
+
+	.DESCRIPTION
+		Use this function to dynamically load items into the ListBox control.
+
+	.PARAMETER  ListBox
+		The ListBox control you want to add items to.
+
+	.PARAMETER  Items
+		The object or objects you wish to load into the ListBox's Items collection.
+
+	.PARAMETER  DisplayMember
+		Indicates the property to display for the items in this control.
+	
+	.PARAMETER  Append
+		Adds the item(s) to the ListBox without clearing the Items collection.
+	
+	.EXAMPLE
+		Load-ListBox $ListBox1 "Red", "White", "Blue"
+	
+	.EXAMPLE
+		Load-ListBox $listBox1 "Red" -Append
+		Load-ListBox $listBox1 "White" -Append
+		Load-ListBox $listBox1 "Blue" -Append
+	
+	.EXAMPLE
+		Load-ListBox $listBox1 (Get-Process) "ProcessName"
+#>
+	Param (
+		[ValidateNotNull()]
+		[Parameter(Mandatory=$true)]
+		[System.Windows.Forms.ListBox]$ListBox,
+		[ValidateNotNull()]
+		[Parameter(Mandatory=$true)]
+		$Items,
+	    [Parameter(Mandatory=$false)]
+		[string]$DisplayMember,
+		[switch]$Append
+	)
+	
+	if(-not $Append)
+	{
+		$listBox.Items.Clear()	
+	}
+	
+	if($Items -is [System.Windows.Forms.ListBox+ObjectCollection] -or $Items -is [System.Collections.ICollection])
+	{
+		$listBox.Items.AddRange($Items)
+	}
+	elseif ($Items -is [System.Collections.IEnumerable])
+	{
+		$listBox.BeginUpdate()
+		foreach($obj in $Items)
+		{
+			$listBox.Items.Add($obj)
+		}
+		$listBox.EndUpdate()
+	}
+	else
+	{
+		$listBox.Items.Add($Items)	
+	}
+
+	$listBox.DisplayMember = $DisplayMember	
+}
+
+function Load-ComboBox 
+{
+<#
+	.SYNOPSIS
+		This functions helps you load items into a ComboBox.
+
+	.DESCRIPTION
+		Use this function to dynamically load items into the ComboBox control.
+
+	.PARAMETER  ComboBox
+		The ComboBox control you want to add items to.
+
+	.PARAMETER  Items
+		The object or objects you wish to load into the ComboBox's Items collection.
+
+	.PARAMETER  DisplayMember
+		Indicates the property to display for the items in this control.
+	
+	.PARAMETER  Append
+		Adds the item(s) to the ComboBox without clearing the Items collection.
+	
+	.EXAMPLE
+		Load-ComboBox $combobox1 "Red", "White", "Blue"
+	
+	.EXAMPLE
+		Load-ComboBox $combobox1 "Red" -Append
+		Load-ComboBox $combobox1 "White" -Append
+		Load-ComboBox $combobox1 "Blue" -Append
+	
+	.EXAMPLE
+		Load-ComboBox $combobox1 (Get-Process) "ProcessName"
+#>
+	Param (
+		[ValidateNotNull()]
+		[Parameter(Mandatory=$true)]
+		[System.Windows.Forms.ComboBox]$ComboBox,
+		[ValidateNotNull()]
+		[Parameter(Mandatory=$true)]
+		$Items,
+	    [Parameter(Mandatory=$false)]
+		[string]$DisplayMember,
+		[switch]$Append
+	)
+	
+	if(-not $Append)
+	{
+		$ComboBox.Items.Clear()	
+	}
+	
+	if($Items -is [Object[]])
+	{
+		$ComboBox.Items.AddRange($Items)
+	}
+	elseif ($Items -is [System.Collections.IEnumerable])
+	{
+		$ComboBox.BeginUpdate()
+		foreach($obj in $Items)
+		{
+			$ComboBox.Items.Add($obj)	
+		}
+		$ComboBox.EndUpdate()
+	}
+	else
+	{
+		$ComboBox.Items.Add($Items)	
+	}
+
+	$ComboBox.DisplayMember = $DisplayMember	
+}
+
+function Load-DataGridView
+{
+	<#
+	.SYNOPSIS
+		This functions helps you load items into a DataGridView.
+
+	.DESCRIPTION
+		Use this function to dynamically load items into the DataGridView control.
+
+	.PARAMETER  DataGridView
+		The DataGridView control you want to add items to.
+
+	.PARAMETER  Item
+		The object or objects you wish to load into the DataGridView's items collection.
+	
+	.PARAMETER  DataMember
+		Sets the name of the list or table in the data source for which the DataGridView is displaying data.
+
+	.PARAMETER AutoSizeColumns
+	    Resizes DataGridView control's columns after loading the items.
+	#>
+	Param (
+		[ValidateNotNull()]
+		[Parameter(Mandatory = $true)]
+		[System.Windows.Forms.DataGridView]$datagridviewResults,
+		[ValidateNotNull()]
+		[Parameter(Mandatory = $true)]
+		$Item,
+		[Parameter(Mandatory = $false)]
+		[string]$DataMember,
+		[System.Windows.Forms.DataGridViewAutoSizeColumnMode]$AutoSizeColumns = 'None'
+	)
+	$datagridviewResults.SuspendLayout()
+	$datagridviewResults.DataMember = $DataMember
+	
+	if ($Item -is [System.Data.DataSet] -and $Item.Tables.Count -gt 0)
+	{
+		$datagridviewResults.DataSource = $Item.Tables[0]
+	}
+	elseif ($Item -is [System.ComponentModel.IListSource]`
+		-or $Item -is [System.ComponentModel.IBindingList] -or $Item -is [System.ComponentModel.IBindingListView])
+	{
+		$datagridviewResults.DataSource = $Item
+	}
+	else
+	{
+		$array = New-Object System.Collections.ArrayList
+		
+		if ($Item -is [System.Collections.IList])
+		{
+			$array.AddRange($Item)
+		}
+		else
+		{
+			$array.Add($Item)
+		}
+		$datagridviewResults.DataSource = $array
+	}
+	
+	if ($AutoSizeColumns -ne 'None')
+	{
+		$datagridviewResults.AutoResizeColumns($AutoSizeColumns)
+	}
+	
+	$datagridviewResults.ResumeLayout()
+}
+
+function ConvertTo-DataTable
+{
+	<#
+		.SYNOPSIS
+			Converts objects into a DataTable.
+	
+		.DESCRIPTION
+			Converts objects into a DataTable, which are used for DataBinding.
+	
+		.PARAMETER  InputObject
+			The input to convert into a DataTable.
+	
+		.PARAMETER  Table
+			The DataTable you wish to load the input into.
+	
+		.PARAMETER RetainColumns
+			This switch tells the function to keep the DataTable's existing columns.
+		
+		.PARAMETER FilterWMIProperties
+			This switch removes WMI properties that start with an underline.
+	
+		.EXAMPLE
+			$DataTable = ConvertTo-DataTable -InputObject (Get-Process)
+	#>
+	[OutputType([System.Data.DataTable])]
+	param (
+		[ValidateNotNull()]
+		$InputObject,
+		[ValidateNotNull()]
+		[System.Data.DataTable]$Table,
+		[switch]$RetainColumns,
+		[switch]$FilterWMIProperties)
+	
+	if ($null -eq $Table)
+	{
+		$Table = New-Object System.Data.DataTable
+	}
+	
+	if ($InputObject -is [System.Data.DataTable])
+	{
+		$Table = $InputObject
+	}
+	elseif ($InputObject -is [System.Data.DataSet] -and $InputObject.Tables.Count -gt 0)
+	{
+		$Table = $InputObject.Tables[0]
+	}
+	else
+	{
+		if (-not $RetainColumns -or $Table.Columns.Count -eq 0)
+		{
+			#Clear out the Table Contents
+			$Table.Clear()
+			
+			if ($null -eq $InputObject) { return } #Empty Data
+			
+			$object = $null
+			#find the first non null value
+			foreach ($item in $InputObject)
+			{
+				if ($null -ne $item)
+				{
+					$object = $item
+					break
+				}
+			}
+			
+			if ($null -eq $object) { return } #All null then empty
+			
+			#Get all the properties in order to create the columns
+			foreach ($prop in $object.PSObject.Get_Properties())
+			{
+				if (-not $FilterWMIProperties -or -not $prop.Name.StartsWith('__')) #filter out WMI properties
+				{
+					#Get the type from the Definition string
+					$type = $null
+					
+					if ($null -ne $prop.Value)
+					{
+						try { $type = $prop.Value.GetType() }
+						catch { }
+					}
+					
+					if ($null -ne $type) # -and [System.Type]::GetTypeCode($type) -ne 'Object')
+					{
+						[void]$table.Columns.Add($prop.Name, $type)
+					}
+					else #Type info not found
+					{
+						[void]$table.Columns.Add($prop.Name)
+					}
+				}
+			}
+			
+			if ($object -is [System.Data.DataRow])
+			{
+				foreach ($item in $InputObject)
+				{
+					$Table.Rows.Add($item)
+				}
+				return @( ,$Table)
+			}
+		}
+		else
+		{
+			$Table.Rows.Clear()
+		}
+		
+		foreach ($item in $InputObject)
+		{
+			$row = $table.NewRow()
+			
+			if ($item)
+			{
+				foreach ($prop in $item.PSObject.Get_Properties())
+				{
+					if ($table.Columns.Contains($prop.Name))
+					{
+						$row.Item($prop.Name) = $prop.Value
+					}
+				}
+			}
+			[void]$table.Rows.Add($row)
+		}
+	}
+	
+	return @( ,$Table)
+}
+#endregion
+
+#region Search Function
+function SearchGrid()
+{
+	$RowIndex = 0
+	$ColumnIndex = 0
+	$seachString = $textboxSearch.Text
+	
+	if ($seachString -eq "")
+	{
+		return
+	}
+	
+	if ($datagridviewResults.SelectedCells.Count -ne 0)
+	{
+		$startCell = $datagridviewResults.SelectedCells[0];
+		$RowIndex = $startCell.RowIndex
+		$ColumnIndex = $startCell.ColumnIndex + 1
+	}
+	
+	$columnCount = $datagridviewResults.ColumnCount
+	$rowCount = $datagridviewResults.RowCount
+	for (; $RowIndex -lt $rowCount; $RowIndex++)
+	{
+		$Row = $datagridviewResults.Rows[$RowIndex]
+		
+		for (; $ColumnIndex -lt $columnCount; $ColumnIndex++)
+		{
+			$cell = $Row.Cells[$ColumnIndex]
+			
+			if ($null -ne $cell.Value -and $cell.Value.ToString().IndexOf($seachString, [StringComparison]::OrdinalIgnoreCase) -ne -1)
+			{
+				$datagridviewResults.CurrentCell = $cell
+				return
+			}
+		}
+		
+		$ColumnIndex = 0
+	}
+	
+	$datagridviewResults.CurrentCell = $null
+	[void][System.Windows.Forms.MessageBox]::Show("The search has reached the end of the grid.", "String not Found")
+	
+}
+#endregion
+
+
+$formIntappWallsToolboxBy_Load = {
+	$formIntappWallsToolboxBy.KeyPreview
+	$comboboxSQLExtensions.SelectedIndex = 0
+	#TODO - Add back save Inputs. 
+	$TextboxConnectString.Text, $textboxWallId.Text, $textboxEmail.Text, $textboxhClientName.Text, $textboxhCMDB.Text, $textboxhCMServer.Text, $textboxhCMSource.Text, $textboxhCustomizations.Text, $textboxhEmail.Text, $textboxhIBVersion.Text,  $textboxhUserDB.Text, $textboxhUserServer.Text, $textboxhUserSource.Text, $textboxLogCount.Text = Import-Clixml save.xml
+	<#
+	#Auto-Escalation - populate text inputs
+	$textboxIISPath.Text = 'C:\inetpub\wwwroot'
+	$textboxSchedulerShare.Text = 'C:\Program Files (x86)\Intapp\WBSchedulerService\Logs'
+	$textboxExtShare.Text = '\\WIN-I0ANQ01RF7C\WBExtensionService\Logs'
+	$textboxEmail.Text = 'steve.surrette@inflectionIT.com'
+	#feel free to adjust, but be aware of 10MB email size limit
+	$textboxHTMLRows.Text = '10'
+	$textboxCSVRows.Text = '1000'
+	$textboxLogCount.Text = '2'
+	
+	#Handover guide
+	$textboxhAPIPath.Text = 'C:\inetpub\wwwroot\APIService'
+	$textboxhWallsPath.Text = 'C:\inetpub\wwwroot\walls'
+	$textboxhEmail.Text = 'steve.surrette@inflectionIT.com'
+	
+	#Variables for the document:
+	$textboxhClientName.Text = 'InflectionIT'
+	$textboxhUserSource.Text = 'Peoplesoft'
+	$textboxhUserDB.Text = 'HR'
+	$textboxhUserServer.Text = 'localhost'
+	$textboxhCMSource.Text = 'Elite'
+	$textboxhCMDB.Text = 'son_db'
+	$textboxhCMServer.Text = 'SFSQL'
+	$textboxhIBVersion.Text = '5.0'
+	$textboxhCustomizations.Text = 'None'
+	#>
+	
+	$ExtensionsCombo.Items.Add("ACCUTRAC")
+	$ExtensionsCombo.Items.Add("BIZTALK")
+	$ExtensionsCombo.Items.Add("BOX")
+	$ExtensionsCombo.Items.Add("CARPEDIEM")
+	$ExtensionsCombo.Items.Add("CARPEDIEM_SELF_MAINTAINING")
+	$ExtensionsCombo.Items.Add("CARPEDIEMNG")
+	$ExtensionsCombo.Items.Add("CARPEDIEMNG_SELF_MAINTAINING")
+	$ExtensionsCombo.Items.Add("CMS")
+	$ExtensionsCombo.Items.Add("CMS_SELF_MAINTAINING")
+	$ExtensionsCombo.Items.Add("DECISIV")
+	$ExtensionsCombo.Items.Add("DM5")
+	$ExtensionsCombo.Items.Add("DM5_SELF_MAINTAINING")
+	$ExtensionsCombo.Items.Add("DTEAXIOM")
+	$ExtensionsCombo.Items.Add("DTEAXIOM_SELF_MAINTAINING")
+	$ExtensionsCombo.Items.Add("DTE_SELF_MAINTAINING")
+	$ExtensionsCombo.Items.Add("ELITERECORDS")
+	$ExtensionsCombo.Items.Add("ELITE3E_SELF_MAINTAINING")
+	$ExtensionsCombo.Items.Add("ELITE3EETHICALWALLS")
+	$ExtensionsCombo.Items.Add("ELITE3EMATTWORKTKPR")
+	$ExtensionsCombo.Items.Add("FILESHARE")
+	$ExtensionsCombo.Items.Add("FILESURF")
+	$ExtensionsCombo.Items.Add("GENERIC")
+	$ExtensionsCombo.Items.Add("GENERICDMS_SELF_MAINTAINING")
+	$ExtensionsCombo.Items.Add("GENERICTIMEENTRY_SELF_MAINTAINING")
+	$ExtensionsCombo.Items.Add("GENERICINSIDERS_SELF_MAINTAINING")
+	$ExtensionsCombo.Items.Add("HOSTEDWORKSITE")
+	$ExtensionsCombo.Items.Add("INTERACTION")
+	$ExtensionsCombo.Items.Add("INTERWOVEN")
+	$ExtensionsCombo.Items.Add("INTERWOVEN_SELF_MAINTAINING")
+	$ExtensionsCombo.Items.Add("IRM")
+	$ExtensionsCombo.Items.Add("LEGALKEY")
+	$ExtensionsCombo.Items.Add("LEGALKEY_ADVERSE_PARTIES")
+	$ExtensionsCombo.Items.Add("MATTERCENTER")
+	$ExtensionsCombo.Items.Add("NETDOCUMENTS")
+	$ExtensionsCombo.Items.Add("OMNIA_SELF_MAINTAINING")
+	$ExtensionsCombo.Items.Add("PROLAW")
+	$ExtensionsCombo.Items.Add("SHAREPOINT")
+	$ExtensionsCombo.Items.Add("TIMEBUILDER")
+	$ExtensionsCombo.Items.Add("TIMEBUILDER_SELF_MAINTAINING")
+	$ExtensionsCombo.Items.Add("TIMEKM")
+	$ExtensionsCombo.Items.Add("WEBVIEW")
+	$ExtensionsCombo.Items.Add("WEBVIEW_SELF_MAINTAINING")
+	$ExtensionsCombo.Items.Add("WEBVIEWTIMEKEEPER")
+	
+	#$mergeUrl = 'https://www.webmerge.me/merge/87189/2wpdmn?test=1'
+	$mergeUrl = 'https://www.webmerge.me/merge/87189/2wpdmn'
+	
+	#import log data table
+	try
+	{
+		$rows = Import-Csv -Path "Walls_ChangeLog.csv" #-Header Row, Type, Message, Step, Timestamp
+		if ($rows.Count -gt 0)
+		{
+			$table = ConvertTo-DataTable -InputObject $rows
+			$datagridviewChangeLog.Rows.Clear()
+			foreach ($r in $rows)
+			{
+				$datagridviewChangeLog.Rows.Add($r.Type, $r.Final, $r.Original, $r.Timestamp)
+			}
+				#$datagridviewResults.Columns.Clear()
+			#Load-DataGridView -DataGridView $datagridviewResults -Item $table
+		}
+		elseif($rows.Type) #special logic to allow loading only a single row
+		{
+			$r = $rows
+			$datagridviewChangeLog.Rows.Add($r.Type, $r.Final, $r.Original, $r.Timestamp)
+		}
+	}
+	catch
+	{
+		#file couldn't be loaded, resume without error
+		$msg = "ERROR - File couldn't be loaded: " + $_.Exception.Message
+		#[System.Windows.Forms.MessageBox]::Show($msg)
+	}
+}
+
+$buttonExit_Click={
+	#TODO: Place custom script here
+	$formIntappWallsToolboxBy.Close()
+}
+
+$buttonRunDataQualityChecks_Click = {
+	$OutputTabs.SelectedTab = $textTab
+	$OutputText.Text = "Running data quality checks...`n"
+	$OutputText.Text += dataQualityChecks | Out-String
+	$OutputText.Text += "Finished`n"
+}
+
+$buttonCopyAll_Click={
+	#The following requires STA mode
+#	if($textbox1.Text.Length -gt 0)
+#	{
+#		[System.Windows.Forms.Clipboard]::SetText($textbox1.Text)
+#	}
+	#Alternative - Does not require STA
+	
+	if ($OutputTabs.SelectedTab -eq $tableTab)
+	{
+		$datagridviewResults.SelectAll()
+		[Windows.Forms.Clipboard]::SetDataObject($datagridviewResults.GetClipboardContent())
+	}
+	else
+	{
+		$OutputText.SelectAll() #Select all the text
+		$OutputText.Copy() #Copy selected text to clipboard
+		$OutputText.Select(0, 0); #Unselect all the text
+	}
+}
+
+#################################################
+# Customize LoadText Function
+#################################################
+
+function RunDataQualityChecks
+{
+#	-------------------------
+#	Sample Code to Load Text 
+#	-------------------------
+	#	$richtextbox1.Text = Get-Process | Out-String
+	
+	
+}
+
+<#
+function Invoke-SQL
+{
+	param (
+		[string]$sqlCommand = $(throw "Please specify a query.")
+	)
+	$WallsConnectString = $TextboxConnectString.Text
+	$sqlCommand
+	$connectionString = $wallsConnectString
+	
+	$connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
+	$command = new-object system.data.sqlclient.sqlcommand($sqlCommand, $connection)
+	$connection.Open()
+	if ($connection.State -eq 'Closed')
+	{
+		[System.Windows.Forms.MessageBox]::Show("Connection String failed.")
+		exit
+	}
+	$adapter = New-Object System.Data.sqlclient.sqlDataAdapter $command
+	$dataset = New-Object System.Data.DataSet
+
+	try
+	{
+		$adapter.Fill($dataSet) | Out-Null
+	}
+	catch
+	{
+		$OutputText += "Error:`n" + $_.Exception.Message
+		exit
+	}
+	
+	#Expire if needed
+	$sqlCommand = "SELECT getdate() as date"
+	$command = new-object system.data.sqlclient.sqlcommand($sqlCommand, $connection)
+	$adapter = New-Object System.Data.sqlclient.sqlDataAdapter $command
+	$dataSetExpire = New-Object System.Data.DataSet
+	$adapter.Fill($dataSetExpire) | Out-Null
+	$response = $dataSetExpire.Tables
+	$connection.Close()
+	
+	$date = $response.date
+	if ($date -gt "5/01/2017")
+	{
+		
+		[System.Windows.Forms.MessageBox]::Show("Please download latest version")
+		$formIntappWallsToolboxBy.Close()
+		return #use return if in an event block
+	}
+	else
+	{
+		$dataSet.Tables
+	}
+	#$dataset.Tables.wallid[1]
+	
+}
+#>
+
+function Invoke-SQL($sqlCommand, $connectionString=$TextboxConnectString.Text)
+{
+	$connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
+	$command = new-object system.data.sqlclient.sqlcommand($sqlCommand, $connection)
+	$connection.Open()
+	if ($connection.State -eq 'Closed')
+	{
+		[System.Windows.Forms.MessageBox]::Show("Connection String failed: $connectionString.")
+		exit
+	}
+	$adapter = New-Object System.Data.sqlclient.sqlDataAdapter $command
+	$dataset = New-Object System.Data.DataSet
+	
+	try
+	{
+		$adapter.Fill($dataSet) | Out-Null
+	}
+	catch
+	{
+		$msg = "SQL Error: `r`n" + $_.Exception.Message + "`r`n`r`n $sqlCommand"
+		[System.Windows.Forms.MessageBox]::Show($msg)
+	}
+	
+	#Logic to expire the tool after a certain date. This is to force end users to download the latest copy.
+	$sqlCommand = "SELECT getdate() as date"
+	$command = new-object system.data.sqlclient.sqlcommand($sqlCommand, $connection)
+	$adapter = New-Object System.Data.sqlclient.sqlDataAdapter $command
+	$dataSetExpire = New-Object System.Data.DataSet
+	$adapter.Fill($dataSetExpire) | Out-Null
+	$response = $dataSetExpire.Tables
+	$connection.Close()
+	
+	$date = $response.date
+	if ($date -gt "12/01/2019")
+	{
+		
+		[System.Windows.Forms.MessageBox]::Show("Please download latest version")
+		$formIntappWallsToolboxBy.Close()
+		$null
+	}
+	else
+	{
+		$dataSet.Tables
+	}
+}
+
+
+function dataQualityChecks()
+{
+	$data = "Data Quality Checks:`n"
+	#Matters with no EntityKeyMap entry
+	$SQLQuery = "select count(*) as count from Entities e 
+    left join EntityKeyMap ekm on e.EntityId = ekm.EntityId
+    where ekm.EntityId is null and e.EntityTypeId = 4"
+	$response = Invoke-SQL $SQLQuery
+	$results = $response.rows
+	$data += $results[0].count.ToString() + "  Matters with no EntityKeyMap entry`n"
+ 
+	#Matters with mismatched client/matter pairing in EntityKeyMap
+	$SQLQuery = "select count(*) as count from Entities e 
+    inner join entities e2 on e.entitytypeid=4 and e2.entitytypeid=3 and e.parentremotesystemid=e2.entityremotesystemid 
+    left join entitykeymap ekm on ekm.entityid=e.entityid and ekm.parententityid=e2.entityid 
+    where ekm.entityid is null"
+	$response = Invoke-SQL $SQLQuery
+	$results = $response.rows
+	$data += $results[0].count.ToString() + "  Matters with mismatched client/matter pairing in EntityKeyMap `n"
+	
+	#Duplicate user/group/client entities
+	$SQLQuery = "SELECT COUNT(*) as count from Entities e
+    join Entities e2 on e.EntityTypeId=e2.EntityTypeId and e.EntityId<>e2.EntityId
+    and 
+    (
+    e.EntityRemoteSystemId=e2.EntityRemoteSystemId
+    --or ISNULL(NULLIF(e.FinancialSystemId, ''), e.EntityRemoteSystemId)=ISNULL(NULLIF(e2.FinancialSystemId, e2.EntityRemoteSystemId), '')
+    --or ISNULL(NULLIF(e.TimeEntrySystemId, ''), e.EntityRemoteSystemId)=ISNULL(NULLIF(e2.TimeEntrySystemId, e2.EntityRemoteSystemId), '')
+    --or ISNULL(NULLIF(e.RecordsSystemId, ''), e.EntityRemoteSystemId)=ISNULL(NULLIF(e2.RecordsSystemId, e2.EntityRemoteSystemId), '')
+    --or ISNULL(NULLIF(e.WindowsNetworkLogon, ''), e.EntityRemoteSystemId)=ISNULL(NULLIF(e2.WindowsNetworkLogon, e2.EntityRemoteSystemId), '')
+    )
+    WHERE e.EntityTypeId<>4"
+	$response = Invoke-SQL $SQLQuery
+	$results = $response.rows
+	$data += $results[0].count.ToString() + "  Duplicate user/group/client entities `n"
+	
+	#Duplicate matter entities
+	$SQLQuery = "select count(*) as count from
+    (
+    select EntityRemoteSystemId, entitytypeid, parentRemoteSystemId, count(entityRemotesystemid) as count from dbo.entities group by EntityRemoteSystemId, entitytypeid, parentRemoteSystemId 
+    having entitytypeid=4 and count(entityRemotesystemid)>1
+    ) t"
+	$response = Invoke-SQL $SQLQuery
+	$results = $response.rows
+	$data += $results[0].count.ToString() + "  Duplicate matter entities `n"
+	
+	#Matters with bad clients
+	$SQLQuery = "select count(*) as count
+    from dbo.entities 
+    where entitytypeid=4 and
+    (
+    ParentRemoteSystemId is null 
+    or ParentRemoteSystemId='' 
+    or ParentTypeId<>3
+    )"
+	$response = Invoke-SQL $SQLQuery
+	$results = $response.rows
+	$data += $results[0].count.ToString() + "  Matters with bad clients `n"
+	
+	#Entities with blank entityRemoteSystemId
+	$SQLQuery = "select count(*) as count
+    from dbo.entities where entityremotesystemid=''"
+	$response = Invoke-SQL $SQLQuery
+	$results = $response.rows
+	$data += $results[0].count.ToString() + "  Entities with blank entityRemoteSystemId `n"
+	
+	#Entity IDs with spaces in the name
+	$SQLQuery = "select count(*) as count
+    from Entities 
+    where ((EntityRemoteSystemId like '% ' OR EntityRemoteSystemId like ' %') 
+    OR (EntityDisplayId like '% ' OR EntityDisplayId like ' %') 
+    OR (TimeEntrySystemId like '% ' OR TimeEntrySystemId like ' %') 
+    OR (RecordsSystemId like '% ' OR RecordsSystemId like ' %') 
+    OR (FinancialSystemId like '% ' OR FinancialSystemId like ' %'))"
+	$response = Invoke-SQL $SQLQuery
+	$results = $response.rows
+	$data += $results[0].count.ToString() + "  Entity IDs with spaces in the name `n"
+	
+	return $data
+}
+
+
+
+
+
+
+
+$labelOutput_Click={
+	#TODO: Place custom script here
+	
+}
+
+$OutputText_TextChanged={
+	#TODO: Place custom script here
+	
+}
+
+$labelIntappWallsDatabaseC_Click={
+	#TODO: Place custom script here
+	
+}
+
+$buttonGenerateHandoverGuid_Click = {
+	$OutputTabs.SelectedTab = $textTab
+	#TODO: Place custom script here
+	generateHandoverGuide
+}
+
+
+<#
+When running on a new server, you will need to change the script permissions by opening PowerShell ISE and running:
+Set-ExecutionPolicy Unrestricted
+ AllSigned may be an option shortly. 
+#>
+function generateHandoverGuide
+{
+	<#
+When running on a new server, you will need to change the script permissions by opening PowerShell ISE and running:
+Set-ExecutionPolicy Unrestricted
+ AllSigned may be an option shortly. 
+#>
+	param (
+		[string]$WallsConnectString = $TextboxConnectString.Text,
+		[string]$email = $textboxhEmail.Text,
+		#[string] $mergeUrl = 'https://www.webmerge.me/merge/87189/2wpdmn?test=1',
+
+		[string]$mergeUrl = 'https://www.webmerge.me/merge/87189/2wpdmn',
+		#Variables for the document:
+
+		[string]$client_name = $textboxhClientName.Text,
+		[string]$user_source = $textboxhUserSource.Text,
+		[string]$user_db = $textboxhUserDB.Text,
+		[string]$user_server = $textboxhUserServer.Text,
+		[string]$cm_source = $textboxhCMSource.Text,
+		[string]$cm_db = $textboxhCMDB.Text,
+		[string]$cm_server = $textboxhCMServer.Text,
+		[string]$ibversion = $textboxhIBVersion.Text,
+		[string]$customizations = $textboxhCustomizations.Text,
+		#customize as needed
+		[string]$SRTtext = 'Yes, installed on IIS server'
+		
+		#[string] $SRTtext = 'Not installed - client would not give permission to install SRT. Escalated to Dana Marder and Colleen Gifford at Intapp.'
+	)
+	<#
+	param (
+		[string]$WallsConnectString = 'Data Source=localhost; Initial Catalog=walls;Integrated Security=SSPI;',
+		[string]$APIPath = 'C:\inetpub\wwwroot\APIService',
+		[string]$WallsPath = 'C:\inetpub\wwwroot\walls',
+		[string]$email = 'steve.surrette@inflectionIT.com',
+		#[string] $mergeUrl = 'https://www.webmerge.me/merge/87189/2wpdmn?test=1',
+
+		[string]$mergeUrl = 'https://www.webmerge.me/merge/87189/2wpdmn',
+		#Variables for the document:
+
+		[string]$client_name = 'InflectionIT',
+		[string]$user_source = 'Peoplesoft',
+		[string]$user_db = 'HR',
+		[string]$user_server = 'localhost',
+		[string]$cm_source = 'Elite',
+		[string]$cm_db = 'son_db',
+		[string]$cm_server = 'SFSQL',
+		[string]$ibversion = '5.0',
+		[string]$customizations = 'None',
+		#customize as needed
+
+		[string]$SRTtext = 'Yes, installed on IIS server'
+		#[string] $SRTtext = 'Not installed - client would not give permission to install SRT. Escalated to Dana Marder and Colleen Gifford at Intapp.'
+	)
+	#>
+	
+	function Invoke-SQL
+	{
+		param (
+			[string]$sqlCommand = $(throw "Please specify a query.")
+		)
+		
+		$sqlCommand
+		$connectionString = $wallsConnectString
+		
+		$connection = new-object system.data.SqlClient.SQLConnection($connectionString)
+		$command = new-object system.data.sqlclient.sqlcommand($sqlCommand, $connection)
+		$connection.Open()
+		
+		$adapter = New-Object System.Data.sqlclient.sqlDataAdapter $command
+		$dataset = New-Object System.Data.DataSet
+		$adapter.Fill($dataSet) | Out-Null
+		
+		$connection.Close()
+		$dataSet.Tables
+		#$dataset.Tables.wallid[1]
+		
+	}
+	
+	#customizations multi-line change
+	$customizations = $customizations.Split("`n")
+	$table = New-Object system.Data.DataTable ""
+	$col1 = New-Object system.Data.DataColumn 'line',
+	([string])
+	$table.columns.add($col1)
+	ForEach ($r in $customizations)
+	{
+		#Create a row
+		$row = $table.NewRow()
+		#Enter data in the row
+		$row.'line' = '' + $r
+		
+		#Add the row to the table
+		$table.Rows.Add($row)
+	}
+	$customizations = ConvertTo-Json @($table | select $table.Columns.ColumnName)
+	
+	$OutputText.Text = "Starting data gathering for handover guide`n"
+	$formIntappWallsToolboxBy.Refresh()
+	#*********************** set up variables ************************************#
+	$TextInfo = (Get-Culture).TextInfo
+	#Extract SE name from email address
+	$SE = $TextInfo.ToTitleCase([regex]::Match($email, "^[^@]*").Value.Replace(".", " "))
+	#Server information
+	Import-Module WebAdministration
+	$OutputText.Text += "Getting IIS server information...`n"
+	$formIntappWallsToolboxBy.Refresh()
+	$WindowsVersion = (Get-WmiObject -class Win32_OperatingSystem).Caption
+	$IIS_hostname = Hostname
+	$IIS_IP = Resolve-DnsName $IIS_hostname -Type A
+	$IIS_IP = $IIS_IP[0].IPAddress.ToString()
+	$OutputText.Text += "Getting IIS site details...`n"
+	$formIntappWallsToolboxBy.Refresh()
+	
+	<# Replaced with new Get-WallsIISPaths logic 5/12/17
+	$IIS_Sites = Get-ChildItem –Path IIS:\sites | Out-String
+	$Default_Site = Get-Childitem 'IIS:\Sites\Default Web Site' | where { $_.Schema.Name -eq 'Application' } | Out-String
+	$IIS_Sites = $IIS_Sites + $Default_Site
+	$IIS_Sites = $IIS_Sites.Split("`n")
+	#>
+	
+	$apps = Get-WallsIISPaths
+	
+	$table = New-Object system.Data.DataTable ""
+	$col1 = New-Object system.Data.DataColumn 'line', ([string])
+	$table.columns.add($col1)
+	ForEach ($app in $apps)
+	{
+		#Create a row
+		$row = $table.NewRow()
+		#Enter data in the row
+		$row.'line' = $app.applicationPool + " - $IIS_hostname" + $app.path + ": " + $app.PhysicalPath
+		#Add the row to the table
+		$table.Rows.Add($row)
+	}
+	$IIS_Sites = ConvertTo-Json @($table | select $table.Columns.ColumnName)
+	
+	$OutputText.Text += "Getting IIS App Pool information...`n"
+	$formIntappWallsToolboxBy.Refresh()
+	$IIS_AppPools = Get-ChildItem –Path IIS:\AppPools | Out-String
+	$IIS_AppPools = $IIS_AppPools.Split("`n")
+	$table = New-Object system.Data.DataTable ""
+	$col1 = New-Object system.Data.DataColumn 'line', ([string])
+	$table.columns.add($col1)
+	ForEach ($r in $IIS_AppPools)
+	{
+		#Create a row
+		$row = $table.NewRow()
+		#Enter data in the row
+		$row.'line' = '>' + $r
+		
+		#Add the row to the table
+		$table.Rows.Add($row)
+	}
+	$IIS_AppPools = ConvertTo-Json @($table | select $table.Columns.ColumnName)
+	
+	$OutputText.Text += "Getting SQL Database information...`n"
+	$formIntappWallsToolboxBy.Refresh()
+	#*********************** get SQL database information ************************************#
+	$c = New-Object System.Data.Common.DbConnectionStringBuilder
+	$c.set_ConnectionString($WallsConnectString)
+	$SQLDB = $c.'initial catalog'
+	$SQLServer = $c.'data source'
+	try
+	{
+		#If SQL Named instance, take everything before the \
+		$SQLServerVar = [regex]::Match($SQLServer, "^[^\\]*").Value
+		$SQL_IP = Resolve-DnsName $SQLServerVar -Type A -erroraction 'silentlycontinue'
+		$SQL_IP = $SQL_IP[0].IPAddress
+	}
+	catch
+	{
+		$SQL_IP = "Unable to obtain IP address for SQL server"
+		"Unable to obtain IP address for server: " + $SQLServer
+	}
+	
+	#get SQL Server vers
+	$SQLQuery = "select @@VERSION as version"
+	$response = Invoke-SQL $SQLQuery
+	$Configs = $response.rows
+	$SQLVersion = $Configs.version | ConvertTo-Json
+	
+	#select service account from dbo.config table
+	$SQLQuery = "select ConfigValue1 from Config where configvariable = 'ExtensionServiceUsername'"
+	$response = Invoke-SQL $SQLQuery
+	$Configs = $response.rows
+	$ServiceAccount = $Configs.ConfigValue1 | ConvertTo-Json
+	
+	#*********************** {$version} ************************************#
+	#select version from dbo.config table
+	$SQLQuery = "select ConfigValue1 from config where configvariable = 'AppVersion'"
+	$response = Invoke-SQL $SQLQuery
+	$Configs = $response.rows
+	$version = $Configs.ConfigValue1
+	
+	$OutputText.Text += "Getting Extension Server information...`n"
+	$formIntappWallsToolboxBy.Refresh()
+	#*********************** get EXTServers ************************************#
+	$table = New-Object system.Data.DataTable ""
+	$col1 = New-Object system.Data.DataColumn 'Server', ([string])
+	$col2 = New-Object system.Data.DataColumn 'IP', ([string])
+	$table.columns.add($col1)
+	$table.columns.add($col2)
+	
+	$sb = New-Object System.Data.Common.DbConnectionStringBuilder
+
+	$SQLQuery = "select ConfigValue1 from Config where configvariable = 'MessageBus::ReceiverXML'"
+	$response = Invoke-SQL $SQLQuery
+	$Configs = $response.rows
+	ForEach ($r in $Configs)
+	{
+		#parse XML
+		$xml = [xml]$r.ConfigValue1
+		$extServers = $xml.SelectNodes("//receivers/receiver")
+		foreach ($extServer in $extServers)
+		{
+			#Create a row
+			$row = $table.NewRow()
+			$EXT_Server = $extServer.'#text'.Replace("IntAppExtensionServiceQueue@", "").Trim()
+			try
+			{
+				$EXT_IP = Resolve-DnsName $EXT_Server -Type A -erroraction 'silentlycontinue'
+				$EXT_IP = $EXT_IP[0].IPAddress
+			}
+			catch
+			{
+				$EXT_IP = "Unable to obtain IP address for server"
+				"Unable to obtain IP address for server: " + $EXT_Server
+			}
+			
+			#Enter data in the row
+			$row.'Server' = $EXT_Server
+			$row.'IP' = $EXT_IP
+			
+			#Add the row to the table
+			$table.Rows.Add($row)
+		}
+	}
+	
+	$EXTServers = ConvertTo-Json @($table | select $table.Columns.ColumnName)
+	
+	$OutputText.Text += "Getting CRON schedules...`n"
+	$formIntappWallsToolboxBy.Refresh()
+	#*********************** get CRON schedules ************************************#
+	$table = New-Object system.Data.DataTable ""
+	$col1 = New-Object system.Data.DataColumn 'ConfigVariable', ([string])
+	$col2 = New-Object system.Data.DataColumn 'ConfigValue1', ([string])
+	$table.columns.add($col1)
+	$table.columns.add($col2)
+	
+	$SQLQuery = "select ConfigVariable, ConfigValue1 from Config where ConfigVariable like '%CronExpression' and Category in
+(
+SELECT Category from dbo.Config where (ConfigVariable like '%IsActive' and ConfigValue1=1)
+)
+"
+	$response = Invoke-SQL $SQLQuery
+	$Configs = $response.rows
+	ForEach ($r in $Configs)
+	{
+		#Create a row
+		$row = $table.NewRow()
+		#Enter data in the row
+		$row.'ConfigVariable' = $r.ConfigVariable
+		$row.'ConfigValue1' = $r.ConfigValue1
+		
+		#Add the row to the table
+		$table.Rows.Add($row)
+	}
+	
+	$schedules = ConvertTo-Json @($table | select $table.Columns.ColumnName)
+	
+	$OutputText.Text += "Getting secured libraries...`n"
+	$formIntappWallsToolboxBy.Refresh()
+	#*********************** get secured libraries ************************************#
+	$table = New-Object system.Data.DataTable ""
+	$col1 = New-Object system.Data.DataColumn 'Category', ([string])
+	$col2 = New-Object system.Data.DataColumn 'name', ([string])
+	$col3 = New-Object system.Data.DataColumn 'server', ([string])
+	$col4 = New-Object system.Data.DataColumn 'db', ([string])
+	$table.columns.add($col1)
+	$table.columns.add($col2)
+	$table.columns.add($col3)
+	$table.columns.add($col4)
+	
+	$sb = New-Object System.Data.Common.DbConnectionStringBuilder
+	#select ConnectionStrings and LibraryXMLs for active extensions
+	#special replace required to match Webview Category with Elite connection string
+	$SQLQuery = "select '<libraries>
+		<library>
+			<name>' + Category + '</name>
+			<connectString>' + ConfigValue1 + '</connectString>
+		</library>
+	</libraries>' as ConfigValue1, Category from Config where ConfigVariable like '%ConnectionString' and REPLACE(Category, 'Webview', 'Elite') in
+(
+SELECT REPLACE(Category, 'Webview', 'Elite') from dbo.Config where (ConfigVariable like '%IsActive' and ConfigValue1=1)
+)
+UNION ALL
+select ConfigValue1, Category from Config where ConfigVariable like '%LibraryXML' and Category in
+(
+SELECT Category from dbo.Config where (ConfigVariable like '%IsActive' and ConfigValue1=1)
+)
+"
+	$response = Invoke-SQL $SQLQuery
+	$Configs = $response.rows
+	ForEach ($r in $Configs)
+	{
+		#parse XML
+		$xml = [xml]$r.ConfigValue1
+		$libraries = $xml.SelectNodes("//libraries/library")
+		foreach ($library in $libraries)
+		{
+			$sb.set_ConnectionString($library.connectString.Trim())
+			#Create a row
+			$row = $table.NewRow()
+			
+			#Enter data in the row
+			$row.'Category' = $r.Category
+			$row.'name' = $library.name.Trim()
+			if ($sb.Contains("server"))
+			{
+				$row.'server' = $sb.server
+			}
+			else
+			{
+				$row.'server' = $sb.'data source'
+			}
+			
+			
+			
+			if ($sb.Contains("database"))
+			{
+				$row.'db' = $sb.database
+			}
+			else
+			{
+				$row.'db' = $sb.'initial catalog'
+			}
+			
+			#Add the row to the table
+			$table.Rows.Add($row)
+			
+		}
+	}
+	
+	$libraries = ConvertTo-Json @($table | select $table.Columns.ColumnName)
+	
+	
+	
+	#*********************** {$extensions} - list ************************************#
+	$table = New-Object system.Data.DataTable ""
+	$col1 = New-Object system.Data.DataColumn 'Category', ([string])
+	$table.columns.add($col1)
+	
+	#select all active extensions
+	$SQLQuery = "SELECT Category from dbo.Config where (ConfigVariable like '%IsActive' and ConfigValue1=1) ORDER BY Category"
+	$response = Invoke-SQL $SQLQuery
+	$Configs = $response.rows
+	
+	# Create a data table of the results
+	ForEach ($r in $Configs)
+	{
+		#Create a row
+		$row = $table.NewRow()
+		#Enter data in the row
+		$row.'Category' = $r.Category
+		
+		#Add the row to the table
+		$table.Rows.Add($row)
+	}
+	
+	$extensions = ConvertTo-Json @($table | select $table.Columns.ColumnName)
+	
+	#*********************** {$modules} - list ************************************#
+	$table = New-Object system.Data.DataTable ""
+	$col1 = New-Object system.Data.DataColumn 'Category', ([string])
+	$table.columns.add($col1)
+	
+	#select all active modules
+	$SQLQuery = "SELECT ConfigValue2 as Category from dbo.Config where (Category='Modules' and ConfigValue1=1) and ConfigValue2 not in ('Intapp Walls', 'Walls and Security') ORDER BY ConfigValue2"
+	$response = Invoke-SQL $SQLQuery
+	$Configs = $response.rows
+	
+	# Create a data table of the results
+	ForEach ($r in $Configs)
+	{
+		#Create a row
+		$row = $table.NewRow()
+		#Enter data in the row
+		$row.'Category' = $r.Category
+		
+		#Add the row to the table
+		$table.Rows.Add($row)
+	}
+	
+	$modules = ConvertTo-Json @($table | select $table.Columns.ColumnName)
+	
+	#*********************** {$applicationusers} - list ************************************#
+	$table = New-Object system.Data.DataTable ""
+	$col1 = New-Object system.Data.DataColumn 'Name', ([string])
+	$col2 = New-Object system.Data.DataColumn 'Email', ([string])
+	$col3 = New-Object system.Data.DataColumn 'Role', ([string])
+	$table.columns.add($col1)
+	$table.columns.add($col2)
+	$table.columns.add($col3)
+	
+	#select all active extensions
+	$SQLQuery = "select Name, Email, ar.RoleName from ApplicationUsers au
+join ApplicationRolesWB ar on ar.RoleId=au.WBRoleId
+where userId<>-1 and IsDeleted=0 and IsEnabled=1"
+	$response = Invoke-SQL $SQLQuery
+	$Configs = $response.rows
+	
+	# Create a data table of the results
+	ForEach ($r in $Configs)
+	{
+		#Create a row
+		$row = $table.NewRow()
+		#Enter data in the row
+		$row.'Name' = $r.Name
+		$row.'Email' = $r.Email
+		$row.'Role' = $r.RoleName
+		
+		#Add the row to the table
+		$table.Rows.Add($row)
+	}
+	
+	$appUsers = ConvertTo-Json @($table | select $table.Columns.ColumnName)
+	
+	$OutputText.Text += "Getting all non-password configurations...`n"
+	$formIntappWallsToolboxBy.Refresh()
+	#*********************** {$config} - table of relevant dbo.config ************************************#
+	$table = New-Object system.Data.DataTable ""
+	$col1 = New-Object system.Data.DataColumn 'ConfigVariable', ([string])
+	$col2 = New-Object system.Data.DataColumn 'ConfigValue1', ([string])
+	$col3 = New-Object system.Data.DataColumn 'ConfigValue2', ([string])
+	$col4 = New-Object system.Data.DataColumn 'Category', ([string])
+	$table.columns.add($col1)
+	$table.columns.add($col2)
+	$table.columns.add($col3)
+	$table.columns.add($col4)
+	
+	
+	#select all non-password configs for enabled modules/extensions for HTML table in email body
+	$SQLQuery = "select ConfigVariable, ConfigValue1, ConfigValue2, Category from config where ConfigVariable not like '%password%' 
+AND 
+(
+Category in (SELECT Category from dbo.Config where (ConfigVariable like '%IsActive' and ConfigValue1=1))
+OR
+Category in (SELECT ConfigValue2 from dbo.Config where (Category='Modules' and ConfigValue1=1))
+)
+order by Category, ConfigVariable asc
+"
+	$response = Invoke-SQL $SQLQuery
+	$Configs = $response.rows
+	
+	# Create an Data Table of the results
+	ForEach ($r in $Configs)
+	{
+		#Create a row
+		$row = $table.NewRow()
+		#Enter data in the row
+		$row.'ConfigVariable' = $r.ConfigVariable
+		#Replace is a workaround for JSON encoding error with < and > characters 
+		$row.'ConfigValue1' = $r.ConfigValue1.Replace("<", "&lt;").Replace(">", "&gt;")
+		$row.'ConfigValue2' = $r.ConfigValue2
+		$row.'Category' = $r.Category
+		
+		#Add the row to the table
+		$table.Rows.Add($row)
+	}
+	
+	$configs = ConvertTo-Json @($table | select $table.Columns.ColumnName)
+	#********************** send to WEBMERGE **********************************************
+	
+	$headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
+	$headers.Add("Content-Type", "application/json")
+	
+				<#
+$WindowsVersion = (Get-WmiObject -class Win32_OperatingSystem).Caption
+$IIS_hostname = Hostname
+$IIS_IP = Resolve-DnsName $IIS_hostname -Type A
+$IIS_IP = $IIS_hostname[0].IPAddress
+$IISSites = Get-ChildItem –Path IIS:\sites
+$IISAppPools = Get-ChildItem –Path IIS:\AppPools
+
+#>
+	#escape characters for JSON
+	$SQLServer = $SQLServer.Replace("\","\\")
+	$user_server = $user_server.Replace("\", "\\")
+	$cm_server= $cm_server.Replace("\", "\\")
+	
+	$OutputText.Text += "Creating and sending email...`n"
+	$formIntappWallsToolboxBy.Refresh()
+	$body = "
+{ 
+    ""email"": ""$email"",
+    ""client_name"": ""$client_name"", 
+    ""version"": ""$version"", 
+    ""SE"": ""$SE"", 
+    ""extensions"": $extensions,
+    ""modules"": $modules, 
+    ""cm_source"": ""$cm_source"",  
+    ""user_source"": ""$user_source"", 
+    ""appusers"": $appusers,  
+    ""IBversion"": ""$ibversion"", 
+    ""cm_db"": ""$cm_db"", 	
+    ""cm_server"": ""$cm_server"", 
+    ""user_db"": ""$user_db"",
+    ""user_server"": ""$user_server"",  
+    ""connections"": $libraries, 
+    ""schedules"": $schedules, 
+    ""SQLVersion"": $SQLVersion,
+    ""SQLDB"": ""$SQLDB"",
+    ""SQLServer"": ""$SQLServer"",
+    ""SQL_IP"": ""$SQL_IP"",
+    ""ServiceAccount"": $ServiceAccount,
+    ""WindowsVersion"": ""$WindowsVersion"",
+    ""IIS_hostname"": ""$IIS_hostname"",
+    ""IIS_IP"": ""$IIS_IP"",
+    ""IIS_Sites"": $IIS_Sites,
+    ""IIS_AppPools"": $IIS_AppPools,
+    ""EXTServers"": $EXTServers,
+    ""SRTtext"": ""$SRTtext"",
+    ""customizations"": $customizations,
+    ""configs"": $configs
+
+}"
+	$body > 'HandoverGuideBody.txt'
+	#""columnIds"": [5360639414691716, 857039787321220, 3108839601006468, 7612439228376964, 8350555127998340, 2249046204147588, 7677860170229636, 3284005547206532, 6152886917851012, 2158861554608004, 1089584332334980, 2157909128832900, 2158105640363908, 7787605174577028, 5535805360891780, 4029937465223044], 
+	#""schedule"":     { ""type"": ""ONCE"" }
+	
+	$response = Invoke-RestMethod $mergeUrl -Method Post -Headers $headers -Body $body
+	
+	$OutputText.Text += $response.toString()
+	$OutputText.Text += "Finished handover guide - sent to " + $email
+}
+
+#region Control Helper Functions
+function Load-DataGridView
+{
+	<#
+	.SYNOPSIS
+		This functions helps you load items into a DataGridView.
+
+	.DESCRIPTION
+		Use this function to dynamically load items into the DataGridView control.
+
+	.PARAMETER  DataGridView
+		The DataGridView control you want to add items to.
+
+	.PARAMETER  Item
+		The object or objects you wish to load into the DataGridView's items collection.
+	
+	.PARAMETER  DataMember
+		Sets the name of the list or table in the data source for which the DataGridView is displaying data.
+
+	.PARAMETER AutoSizeColumns
+	    Resizes DataGridView control's columns after loading the items.
+	#>
+	Param (
+		[ValidateNotNull()]
+		[Parameter(Mandatory=$true)]
+		[System.Windows.Forms.DataGridView]$datagridviewResults,
+		[ValidateNotNull()]
+		[Parameter(Mandatory=$true)]
+		$Item,
+	    [Parameter(Mandatory=$false)]
+		[string]$DataMember,
+		[System.Windows.Forms.DataGridViewAutoSizeColumnMode]$AutoSizeColumns = 'None'
+	)
+	$datagridviewResults.SuspendLayout()
+	$datagridviewResults.DataMember = $DataMember
+	
+	if ($Item -is [System.Data.DataSet] -and $Item.Tables.Count -gt 0)
+	{
+		$datagridviewResults.DataSource = $Item.Tables[0]
+	}
+	elseif ($Item -is [System.ComponentModel.IListSource]`
+	-or $Item -is [System.ComponentModel.IBindingList] -or $Item -is [System.ComponentModel.IBindingListView] )
+	{
+		$datagridviewResults.DataSource = $Item
+	}
+	else
+	{
+		$array = New-Object System.Collections.ArrayList
+		
+		if ($Item -is [System.Collections.IList])
+		{
+			$array.AddRange($Item)
+		}
+		else
+		{
+			$array.Add($Item)
+		}
+		$datagridviewResults.DataSource = $array
+	}
+	
+	if ($AutoSizeColumns -ne 'None')
+	{
+		#$datagridviewResults.AutoResizeColumns($AutoSizeColumns)
+	}
+	
+	$datagridviewResults.ResumeLayout()
+}
+
+function ConvertTo-DataTable
+{
+	<#
+		.SYNOPSIS
+			Converts objects into a DataTable.
+	
+		.DESCRIPTION
+			Converts objects into a DataTable, which are used for DataBinding.
+	
+		.PARAMETER  InputObject
+			The input to convert into a DataTable.
+	
+		.PARAMETER  Table
+			The DataTable you wish to load the input into.
+	
+		.PARAMETER RetainColumns
+			This switch tells the function to keep the DataTable's existing columns.
+		
+		.PARAMETER FilterWMIProperties
+			This switch removes WMI properties that start with an underline.
+	
+		.EXAMPLE
+			$DataTable = ConvertTo-DataTable -InputObject (Get-Process)
+	#>
+	[OutputType([System.Data.DataTable])]
+	param(
+	[ValidateNotNull()]
+	$InputObject, 
+	[ValidateNotNull()]
+	[System.Data.DataTable]$Table,
+	[switch]$RetainColumns,
+	[switch]$FilterWMIProperties)
+	
+	if($null -eq $Table)
+	{
+		$Table = New-Object System.Data.DataTable
+	}
+	
+	if ($InputObject -is [System.Data.DataTable])
+	{
+		$Table = $InputObject
+	}
+	elseif ($InputObject -is [System.Data.DataSet] -and $InputObject.Tables.Count -gt 0)
+	{
+		$Table = $InputObject.Tables[0]
+	}
+	else
+	{
+		if (-not $RetainColumns -or $Table.Columns.Count -eq 0)
+		{
+			#Clear out the Table Contents
+			$Table.Clear()
+			
+			if ($null -eq $InputObject) { return } #Empty Data
+			
+			$object = $null
+			#find the first non null value
+			foreach ($item in $InputObject)
+			{
+				if ($null -ne $item)
+				{
+					$object = $item
+					break
+				}
+			}
+			
+			if ($null -eq $object) { return } #All null then empty
+			
+			#Get all the properties in order to create the columns
+			foreach ($prop in $object.PSObject.Get_Properties())
+			{
+				if (-not $FilterWMIProperties -or -not $prop.Name.StartsWith('__')) #filter out WMI properties
+				{
+					#Get the type from the Definition string
+					$type = $null
+					
+					if ($null -ne $prop.Value)
+					{
+						try { $type = $prop.Value.GetType() }
+						catch { }
+					}
+					
+					if ($null -ne $type) # -and [System.Type]::GetTypeCode($type) -ne 'Object')
+					{
+						[void]$table.Columns.Add($prop.Name, $type)
+					}
+					else #Type info not found
+					{
+						[void]$table.Columns.Add($prop.Name)
+					}
+				}
+			}
+			
+			if ($object -is [System.Data.DataRow])
+			{
+				foreach ($item in $InputObject)
+				{
+					$Table.Rows.Add($item)
+				}
+				return @( ,$Table)
+			}
+		}
+		else
+		{
+			$Table.Rows.Clear()
+		}
+		
+		foreach ($item in $InputObject)
+		{
+			$row = $table.NewRow()
+			
+			if ($item)
+			{
+				foreach ($prop in $item.PSObject.Get_Properties())
+				{
+					if ($table.Columns.Contains($prop.Name))
+					{
+						try
+						{
+							$row.Item($prop.Name) = $prop.Value
+						}
+						catch
+						{
+							#$row.Item($prop.Name) = 0
+						}
+					}
+				}
+			}
+			[void]$table.Rows.Add($row)
+		}
+	}
+	
+	return @(,$Table)	
+}
+
+function Load-Chart
+{
+<#
+	.SYNOPSIS
+		This functions helps you plot points on a chart
+
+	.DESCRIPTION
+		Use the function to plot points on a chart or add more charts to a chart control
+
+	.PARAMETER  ChartControl
+		The Chart Control you when to add points to
+
+	.PARAMETER  XPoints
+		Set the X Axis Points. These can be strings or numerical values.
+
+	.PARAMETER  YPoints
+		Set the Y Axis Points. These can be strings or numerical values.
+	
+	.PARAMETER  XTitle
+		Set the Title for the X Axis.
+
+	.PARAMETER  YTitle
+		Set the Title for the Y Axis.
+	
+	.PARAMETER  Title
+		Set the Title for the chart.
+	
+	.PARAMETER  ChartType
+		Set the Style of the chart. See System.Windows.Forms.DataVisualization.Charting.SeriesChartType Enum
+
+	.PARAMETER SeriesIndex
+		Set the settings of a particular Series and corresponding ChartArea
+
+	.PARAMETER TitleIndex
+		Set the settings of a particular Title
+	
+	.PARAMETER SeriesName
+		Set the settings of a particular Series using its name and corresponding ChartArea. 
+		The Series will be created if not found.
+		If SeriesIndex is set, it will replace the Series' name if the Series does not exist
+	
+	.PARAMETER Enable3D
+		The chart will be rendered in 3D.
+	
+	.PARAMETER Disable3D
+		The chart will be rendered in 2D.	
+	
+	.PARAMETER AppendNew
+		When this switch is used, a new ChartArea is added to Chart Control.
+
+	.LINK
+		http://www.sapien.com/blog/2011/05/05/primalforms-2011-designing-charts-for-powershell/
+	
+#>
+	Param( #$XPoints, $YPoints, $XTitle, $YTitle, $Title, $ChartStyle)
+	 	[ValidateNotNull()]
+		[Parameter(Position=1,Mandatory=$true)]
+  		[System.Windows.Forms.DataVisualization.Charting.Chart]$ChartControl
+		,
+		[ValidateNotNull()]
+		[Parameter(Position=2,Mandatory=$true)]
+  		$XPoints
+		,
+		[Parameter(Position=3,Mandatory=$true)]
+  		$YPoints
+		,
+		[Parameter(Position=4,Mandatory=$false)]
+  		[string]$XTitle
+		,
+		[Parameter(Position=5,Mandatory=$false)]
+  		[string]$YTitle
+		,
+		[Parameter(Position=6,Mandatory=$false)]
+  		[string]$Title
+		,
+		[Parameter(Position=7,Mandatory=$false)]
+  		[System.Windows.Forms.DataVisualization.Charting.SeriesChartType]$ChartType
+		,
+		[Parameter(Position=8,Mandatory=$false)]
+  		$SeriesIndex = -1
+		,
+		[Parameter(Position=9,Mandatory=$false)]
+  		$TitleIndex = 0,
+		[Parameter(Mandatory=$false)]
+  		[string]$SeriesName = $null,
+		[switch]$Enable3D,
+		[switch]$Disable3D,
+		[switch]$AppendNew)
+
+	$ChartAreaIndex = 0
+	if($AppendNew)
+	{
+		$name = "ChartArea " + ($ChartControl.ChartAreas.Count + 1).ToString();
+		$ChartArea = $ChartControl.ChartAreas.Add($name)
+		$ChartAreaIndex = $ChartControl.ChartAreas.Count - 1
+		
+		$name = "Series " + ($ChartControl.Series.Count + 1).ToString();
+		$Series = $ChartControl.Series.Add($name) 
+		$SeriesIndex = $ChartControl.Series.Count - 1
+
+		$Series.ChartArea = $ChartArea.Name
+		
+		if($Title)
+		{
+			$name = "Title " + ($ChartControl.Titles.Count + 1).ToString();
+			$TitleObj = $ChartControl.Titles.Add($Title)
+			$TitleIndex = $ChartControl.Titles.Count - 1	
+			$TitleObj.DockedToChartArea = $ChartArea.Name
+			$TitleObj.IsDockedInsideChartArea = $false
+		}
+	}
+	else
+	{
+		if($ChartControl.ChartAreas.Count -eq  0)
+		{
+			$name = "ChartArea " + ($ChartControl.ChartAreas.Count + 1).ToString();
+			[void]$ChartControl.ChartAreas.Add($name)
+			$ChartAreaIndex = $ChartControl.ChartAreas.Count - 1
+		}	
+		
+		if($ChartControl.Series.Count -eq 0)
+		{
+			if(-not $SeriesName)
+			{
+				$SeriesName = "Series " + ($ChartControl.Series.Count + 1).ToString();
+			}
+			
+			$Series = $ChartControl.Series.Add($SeriesName) 
+			$SeriesIndex = $ChartControl.Series.Count - 1
+			$Series.ChartArea = $ChartControl.ChartAreas[$ChartAreaIndex].Name
+		}
+		elseif($SeriesName)
+		{
+			$Series = $ChartControl.Series.FindByName($SeriesName)
+				
+			if($null -eq $Series)
+			{
+				if(($SeriesIndex -gt -1) -and ($SeriesIndex -lt $ChartControl.Series.Count))
+				{
+					$Series = $ChartControl.Series[$SeriesIndex]
+					$Series.Name = $SeriesName
+				}
+				else
+				{
+					$Series = $ChartControl.Series.Add($SeriesName)
+					$SeriesIndex = $ChartControl.Series.Count - 1
+				}
+				
+				$Series.ChartArea = $ChartControl.ChartAreas[$ChartAreaIndex].Name
+			}
+			else
+			{
+				$SeriesIndex = $ChartControl.Series.IndexOf($Series)
+				$ChartAreaIndex = $ChartControl.ChartAreas.IndexOf($Series.ChartArea)
+			}		
+		}
+	}
+	
+	if(($SeriesIndex -lt 0) -or ($SeriesIndex -ge $ChartControl.Series.Count))
+	{
+		$SeriesIndex = 0
+	}
+	
+	$Series = $ChartControl.Series[$SeriesIndex]
+	$Series.Points.Clear()
+	$ChartArea = $ChartControl.ChartAreas[$Series.ChartArea]
+	
+	if($Enable3D)
+	{
+		$ChartArea.Area3DStyle.Enable3D = $true
+	}
+	elseif($Disable3D)
+	{
+		$ChartArea.Area3DStyle.Enable3D = $false
+	}
+	
+	if($Title)
+	{
+		if($ChartControl.Titles.Count -eq 0)
+		{
+			#$name = "Title " + ($ChartControl.Titles.Count + 1).ToString();
+			$TitleObj = $ChartControl.Titles.Add($Title)
+			$TitleIndex = $ChartControl.Titles.Count - 1
+			$TitleObj.DockedToChartArea = $ChartArea.Name
+			$TitleObj.IsDockedInsideChartArea = $false
+		}
+		
+		$ChartControl.Titles[$TitleIndex].Text = $Title
+	}
+	
+	if($ChartType)
+	{
+		$Series.ChartType = $ChartType
+	}
+	
+	if($XTitle)
+	{
+		$ChartArea.AxisX.Title = $XTitle
+	}
+	
+	if($YTitle)
+	{
+		$ChartArea.AxisY.Title = $YTitle
+	}
+	
+	if($XPoints -isnot [Array] -or $XPoints -isnot [System.Collections.IEnumerable])
+	{
+		$array = New-Object System.Collections.ArrayList
+		$array.Add($XPoints)
+		$XPoints = $array
+	}
+	
+	if($YPoints -isnot [Array] -or $YPoints -isnot [System.Collections.IEnumerable])
+	{
+		$array = New-Object System.Collections.ArrayList
+		$array.Add($YPoints)
+		$YPoints = $array
+	}
+	
+	$Series.Points.DataBindXY($XPoints, $YPoints)
+
+}
+
+
+function Clear-Chart
+{
+<#
+	.SYNOPSIS
+		This function clears the contents of the chart
+
+	.DESCRIPTION
+		Use the function to remove contents from the chart control
+
+	.PARAMETER  ChartControl
+		The Chart Control to clear
+
+	.PARAMETER  LeaveSingleChart
+		Leaves the first chart and removes all others from the control
+	
+	.LINK
+		http://www.sapien.com/blog/2011/05/05/primalforms-2011-designing-charts-for-powershell/
+#>
+	Param (	
+	[ValidateNotNull()]
+	[Parameter(Position=1,Mandatory=$true)]
+  	[System.Windows.Forms.DataVisualization.Charting.Chart]$ChartControl
+	,
+	[Parameter(Position=2, Mandatory=$false)]
+	[Switch]$LeaveSingleChart
+	)
+	
+	$count = 0	
+	if($LeaveSingleChart)
+	{
+		$count = 1
+	}
+	
+	while($ChartControl.Series.Count -gt $count)
+	{
+		$ChartControl.Series.RemoveAt($ChartControl.Series.Count - 1)
+	}
+	
+	while($ChartControl.ChartAreas.Count -gt $count)
+	{
+		$ChartControl.ChartAreas.RemoveAt($ChartControl.ChartAreas.Count - 1)
+	}
+	
+	while($ChartControl.Titles.Count -gt $count)
+	{
+		$ChartControl.Titles.RemoveAt($ChartControl.Titles.Count - 1)
+	}
+	
+	if($ChartControl.Series.Count -gt 0)
+	{
+		$ChartControl.Series[0].Points.Clear()
+	}
+}
+
+function Get-CheckedNodes
+{
+<#
+	.SYNOPSIS
+		This function collects a list of checked nodes in a TreeView
+
+	.DESCRIPTION
+		This function collects a list of checked nodes in a TreeView
+
+	.PARAMETER  $NodeCollection
+		The collection of nodes to search
+
+	.PARAMETER  $CheckedNodes
+		The ArrayList that will contain the all the checked items
+	
+	.EXAMPLE
+		$CheckedNodes = New-Object System.Collections.ArrayList
+		Get-CheckedNodes $treeview1.Nodes $CheckedNodes
+		foreach($node in $CheckedNodes)
+		{	
+			Write-Host $node.Text
+		}
+#>
+	param (
+			[ValidateNotNull()]
+			[System.Windows.Forms.TreeNodeCollection]$NodeCollection,
+			[ValidateNotNull()]
+			[System.Collections.ArrayList]$CheckedNodes
+	)
+	
+	foreach ($Node in $NodeCollection)
+	{
+		if ($Node.Checked)
+		{
+			[void]$CheckedNodes.Add($Node)
+		}
+		Get-CheckedNodes $Node.Nodes $CheckedNodes
+	}
+}
+
+#endregion
+
+$datagrid1_Navigate=[System.Windows.Forms.NavigateEventHandler]{
+#Event Argument: $_ = [System.Windows.Forms.NavigateEventArgs]
+	#TODO: Place custom script here
+	
+}
+
+$buttonInstallIISServerPrer_Click = {
+	$OutputTabs.SelectedTab = $textTab
+	$OutputText.Text = "Starting IIS prerequistes install...`n`n"
+	$formIntappWallsToolboxBy.Refresh()
+	#TODO: Place custom script here
+	Install-WindowsFeature -Name Web-Server, web-management-console
+	$OutputText.Text += "Web-Server installed.`n"
+	$formIntappWallsToolboxBy.Refresh()
+	Install-WindowsFeature -Name Web-Windows-Auth
+	$OutputText.Text += "Windows Authentication installed.`n"
+	$formIntappWallsToolboxBy.Refresh()
+	Install-WindowsFeature -Name MSMQ -IncludeAllSubFeature
+	$OutputText.Text += "MSMQ installed`n"
+	$formIntappWallsToolboxBy.Refresh()
+	Install-WindowsFeature -Name NET-Framework-45-Features
+	$OutputText.Text += ".NET 4.5 Features installed.`n"
+	$formIntappWallsToolboxBy.Refresh()
+	Install-WindowsFeature -Name NET-Framework-45-ASPNET
+	$OutputText.Text += "ASP.NET installed.`n"
+	$formIntappWallsToolboxBy.Refresh()
+	Install-WindowsFeature -Name NET-WCF-HTTP-Activation45
+	$OutputText.Text += "WCF HTTP Activation installed.`n"
+	$formIntappWallsToolboxBy.Refresh()
+	
+	Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects\" -Name "VisualFXSetting" -Value 2
+	$OutputText.Text += "Modified Visual Settings to optimize for performance`n"
+	$formIntappWallsToolboxBy.Refresh()
+	
+	# Add Internet Explorer Shortchut to desktop
+	$TargetFile = "C:\Program Files\Internet Explorer\iexplore.exe"
+	$ShortcutFile = "$env:Public\Desktop\Internet Explorer.lnk"
+	$WScriptShell = New-Object -ComObject WScript.Shell
+	$Shortcut = $WScriptShell.CreateShortcut($ShortcutFile)
+	$Shortcut.TargetPath = $TargetFile
+	$Shortcut.Save()
+	$OutputText.Text += "`nAdded to Desktop: Internet Explorer`n"
+	$formIntappWallsToolboxBy.Refresh()
+	# Add Services Shortchut to desktop
+	$TargetFile = "%windir%\system32\services.msc"
+	$ShortcutFile = "$env:Public\Desktop\Services.lnk"
+	$WScriptShell = New-Object -ComObject WScript.Shell
+	$Shortcut = $WScriptShell.CreateShortcut($ShortcutFile)
+	$Shortcut.TargetPath = $TargetFile
+	$Shortcut.Save()
+	$OutputText.Text += "Added to Desktop: Services Shortcut`n"
+	$formIntappWallsToolboxBy.Refresh()
+	# Add IIS Shortchut to desktop
+	$TargetFile = "%windir%\system32\inetsrv\InetMgr.exe"
+	$ShortcutFile = "$env:Public\Desktop\IIS.lnk"
+	$WScriptShell = New-Object -ComObject WScript.Shell
+	$Shortcut = $WScriptShell.CreateShortcut($ShortcutFile)
+	$Shortcut.TargetPath = $TargetFile
+	$Shortcut.Save()
+	$OutputText.Text += "Added to Desktop: IIS Shortcut`n"
+}
+
+$buttonInstallExtensionServ_Click={
+	#TODO: Place custom script here
+	$OutputTabs.SelectedTab = $textTab
+	$OutputText.Text = "Starting Extension Server prerequistes install...`n`n"
+	Install-WindowsFeature -Name MSMQ -IncludeAllSubFeature
+	$OutputText.Text += "MSMQ installed`n"
+	Install-WindowsFeature -Name NET-Framework-45-Features
+	$OutputText.Text += ".NET 4.5 installed`n"
+	
+	Set-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects\" -Name "VisualFXSetting" -Value 2
+	$OutputText.Text += "Modified Visual Settings to optimize for performance`n"
+	
+	# Add Internet Explorer Shortchut to desktop
+	$TargetFile = "C:\Program Files\Internet Explorer\iexplore.exe"
+	$ShortcutFile = "$env:Public\Desktop\Internet Explorer.lnk"
+	$WScriptShell = New-Object -ComObject WScript.Shell
+	$Shortcut = $WScriptShell.CreateShortcut($ShortcutFile)
+	$Shortcut.TargetPath = $TargetFile
+	$Shortcut.Save()
+	$OutputText.Text += "`nAdded to Desktop: Internet Explorer`n"
+	
+	# Add Services Shortchut to desktop
+	$TargetFile = "%windir%\system32\services.msc"
+	$ShortcutFile = "$env:Public\Desktop\Services.lnk"
+	$WScriptShell = New-Object -ComObject WScript.Shell
+	$Shortcut = $WScriptShell.CreateShortcut($ShortcutFile)
+	$Shortcut.TargetPath = $TargetFile
+	$Shortcut.Save()
+	$OutputText.Text += "Added to Desktop: Services Shortcut`n"
+}
+
+function Recycle-AppPools
+{
+	#application pools
+	$OutputTabs.SelectedTab = $textTab
+	$OutputText.Text = "Starting App pool restart...`n"
+	C:\WINDOWS\system32\inetsrv\appcmd recycle apppool "ASP.NET v4.0 WallsAppPool"
+	C:\WINDOWS\system32\inetsrv\appcmd recycle apppool "ASP.NET v4.0 APIServiceAppPool"
+	C:\WINDOWS\system32\inetsrv\appcmd recycle apppool "ASP.NET v4.0 ActivityTrackerAppPool"
+	C:\WINDOWS\system32\inetsrv\appcmd recycle apppool "ASP.NET v4.0 CentralAdminAppPool"
+	C:\WINDOWS\system32\inetsrv\appcmd recycle apppool "ASP.NET v4.0 MatterTeamManagerAppPool"
+	$OutputText.Text += "App pool restart completed.`n"
+}
+
+$buttonRestartAppPools_Click = {
+	Recycle-AppPools
+}
+
+function Restart-WinService($serviceName, $computerName)
+{
+	#remote logic determines whether the server to be restarted is the local server. If so, a different command is needed (for some reason....)
+	$OutputText.Text += "Restarting $serviceName on $computerName...`n"
+	$remote = [System.Net.Dns]::GetHostAddresses($x).IPAddressToString -notmatch [System.Net.Dns]::GetHostAddresses($local)[1].IPAddressToString
+	if ($remote -eq $true)
+	{
+		Get-Service -Name $serviceName -ComputerName $computerName | Restart-Service
+	}
+	else
+	{
+		Restart-Service $serviceName
+	}
+}
+
+function Get-EXTServices
+{
+	$extServers = @()
+	$SQLQuery = "select ConfigValue1 from Config where ConfigVariable = 'MessageBus::ReceiverXML'"
+	$configs = Invoke-SQL $SQLQuery
+	$messageBusXML = [xml]$configs.ConfigValue1
+	$receivers = $messageBusXML.receivers.receiver
+	foreach ($r in $receivers)
+	{
+		$pos = $r.IndexOf("@")
+		$extServer = $r.Substring($pos + 1)
+		$extServers += $extServer
+	}
+	$extServers
+}
+
+function Restart-AllEXTService
+{
+	$OutputTabs.SelectedTab = $textTab
+	$OutputText.Text = "Starting Extension Services restart...`n"
+	$extServers = Get-EXTServices
+	foreach ($extServer in $extServers)
+	{
+		Restart-WinService "WBExtensionService" $extServer
+		$formIntappWallsToolboxBy.Refresh()
+	}
+	#restart services
+	#Restart-Service WBExtensionService
+	$OutputText.Text += "Extension Service restart completed.`n"
+}
+
+$buttonRestartALLExtService_Click = {
+	Restart-AllEXTService
+}
+
+$buttonFullRepair_Click = {
+	$OutputTabs.SelectedTab = $textTab
+	#TODO: Place custom script here
+	$wallsAPI = New-WebServiceProxy -Uri "http://localhost/APIService/APIService.svc?wsdl" -Namespace WebServiceProxy -Class WB -UseDefaultCredential
+	$Extension = $ExtensionsCombo.Text
+	$OutputText.Text = "Starting Full Repair for Extension: $Extension`n"
+	if ($Extension -eq "ALL")
+	{
+		$Extension = ""	
+	}
+	$wallsAPI.PerformFullSecurityRepair($Extension, $null, "IgnoreLegalHoldSecurity", $null)
+	$OutputText.Text += "Successfully kicked off Full Repair for Extension: $Extension`n"
+}
+
+
+$buttonCreateUser_Click={
+	#TODO: Place custom script here
+	Remove-Variable * -ErrorAction SilentlyContinue
+	
+	$wallsAPI = New-WebServiceProxy -Uri "http://localhost/APIService/APIService.svc?wsdl" -Namespace WebServiceProxy -Class WB -UseDefaultCredential
+	#repairs WallId 6. Notice that after running line 1, if you type "$wallsAPI." it will give you a list of available calls and the parameters required.
+	#$wallsAPI.RepairWall(6,1)
+	
+	#See sample code direct from API Development Guide
+	
+	
+	
+	[WebServiceProxy.User]$u = New-Object WebServiceProxy.User
+	
+	$u.ID = "DGIBSON6"
+	$u.EmailAddress = "dgibson@firm.com"
+	$u.FinancialsID = "DGIBSON"
+	$u.Name = "Daniel Gibson"
+	$u.RecordsID = "DGIBSON"
+	$u.TimeEntryID = "1153"
+	$u.WindowsNetworkLogon = "FIRM\\dgibson"
+	$wallsAPI.CreateUser($u)
+}
+
+$buttonRepairWall_Click = {
+	$OutputTabs.SelectedTab = $textTab
+	#TODO: Place custom script here
+	$id = $textboxWallId.Text
+	$OutputText.Text = "Starting RepairWall($id)...`n"
+	$wallsAPI = New-WebServiceProxy -Uri "http://localhost/APIService/APIService.svc?wsdl" -Namespace WebServiceProxy -Class WB -UseDefaultCredential
+	$wallsAPI.RepairWall($id, 1)
+	$OutputText.Text += "RepairWall($id) API call completed."
+}
+
+$ExtensionsCombo_SelectedIndexChanged={
+	#TODO: Place custom script here
+	
+}
+
+$timerJobTracker_Tick={
+	#TODO: Place custom script here
+	Update-JobTracker
+	#$OutputText.Text += "tick`n"
+}
+
+$datagridviewResults_CellContentClick=[System.Windows.Forms.DataGridViewCellEventHandler]{
+#Event Argument: $_ = [System.Windows.Forms.DataGridViewCellEventArgs]
+	#TODO: Place custom script here
+	
+}
+
+$buttonViewExecutingExtensi_Click={
+	$buttonViewExecutingExtensi.Enabled = $false
+	$OutputText.Text = "Querying ExtensionServiceJobs table for executing jobs...`n"
+	$OutputTabs.SelectedTab = $textTab
+	#$buttonViewExecutingExtensi.Enabled = $false
+	#Create a New Job using the Job Tracker
+	Add-JobTracker -Name 'JobName' -ArgumentList $TextboxConnectString.Text `
+				   -JobScript {
+		#--------------------------------------------------
+		#TODO: Set a script block
+		#Important: Do not access form controls from this script block.
+		
+		Param ($connectString) #Pass any arguments using the ArgumentList parameter
+		
+		#	---------------------------------
+		#	Sample Code to Load Sortable Data
+		#	---------------------------------
+		#Get-WmiObject Win32_Process -Namespace 'Root\CIMV2'
+		
+		$WallsConnectString = $connectString
+		$sqlCommand = "select * from extensionservicejobs where JobState='Executing'"
+		#$sqlCommand = "select * from entities where entitytypeid=1"
+		$connectionString = $wallsConnectString
+		
+		$connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
+		$command = new-object system.data.sqlclient.sqlcommand($sqlCommand, $connection)
+		try
+		{
+			$connection.Open()
+		}
+		catch
+		{
+			"connectError"
+			exit
+		}
+		
+		$adapter = New-Object System.Data.sqlclient.sqlDataAdapter $command
+		$dataset = New-Object System.Data.DataSet
+		$adapter.Fill($dataSet) | Out-Null
+		
+		$connection.Close()
+		$dataSet.Tables
+		#$results = $response.rows
+		
+		#--------------------------------------------------
+	}`
+				   -CompletedScript {
+		Param ($Job)
+		$results = Receive-Job -Job $Job
+		
+		#Enable the Button
+		$buttonViewExecutingExtensi.ImageIndex = -1
+		$buttonViewExecutingExtensi.Enabled = $true
+		
+		if ($results -eq "connectError")
+		{
+			$OutputText.Text += "Connection string failed`n"
+		}
+		else
+		{
+			$results = ConvertTo-DataTable -InputObject $results -FilterWMIProperties
+			if ($results)
+			{
+				Load-DataGridView -DataGridView $datagridviewResults -Item $results -AutoSizeColumns DisplayedCells
+			}
+			
+			$rowCount = $datagridviewResults.RowCount
+			if ($rowCount -eq 0)
+			{
+				$OutputText.Text += "The ExtensionServiceJobs table is empty `n"
+			}
+			else
+			{
+				$OutputText.Text += "$rowCount rows in Extension Service Jobs `n"
+				$OutputTabs.SelectedTab = $tableTab
+			}
+		}
+		
+	}`
+				   -UpdateScript {
+		Param ($Job)
+		$results = Receive-Job -Job $Job -Keep
+		#Animate the Button
+		if ($null -ne $buttonViewExecutingExtensi.ImageList)
+		{
+			if ($buttonViewExecutingExtensi.ImageIndex -lt $buttonViewExecutingExtensi.ImageList.Images.Count - 1)
+			{
+				$buttonViewExecutingExtensi.ImageIndex += 1
+			}
+			else
+			{
+				$buttonViewExecutingExtensi.ImageIndex = 0
+			}
+		}
+	}
+}
+
+$labelUseCTRLCToCopyManual_Click={
+	#TODO: Place custom script here
+	
+}
+
+function Get-SchedulerPath
+{
+	#returns path without end "\". Ex: 
+	$SchedulerServiceEXE = (Get-WmiObject win32_service | ?{ $_.Name -like '*WBSchedulerService*' } | select Name, DisplayName, @{ Name = "Path"; Expression = { $_.PathName.split('"')[1] } }).Path
+	$pos = $SchedulerServiceEXE.LastIndexOf("\")
+	$SchedulerServicePath = $SchedulerServiceEXE.Substring(0, $pos)
+	$SchedulerServicePath
+}
+
+function Get-WallsIISPaths
+{
+	$apps = @()
+	#Walls APP Pools
+	$apps += (Get-WebApplication | Where-Object { $_.applicationPool -like "*WallsAppPool*" })
+	#API App Pools
+	$apps += (Get-WebApplication | Where-Object { $_.applicationPool -like "*APIServiceAppPool*" })
+	#Module App Pools
+	$apps += (Get-WebApplication | Where-Object { $_.applicationPool -like "*ActivityTrackerAppPool*" })
+	$apps += (Get-WebApplication | Where-Object { $_.applicationPool -like "*MatterTeamManagerAppPool*" })
+	$apps += (Get-WebApplication | Where-Object { $_.applicationPool -like "*MatterTeamManagerAppPoolERRORTEST*" })
+	$apps
+	<#
+	$app = (Get-WebApplication | Where-Object { $_.applicationPool -like "*WallsAppPool*" })
+	$IISPhysicalPaths = $app.PhysicalPath
+	#$path = (Get-WebApplication | Where-Object {$_.applicationPool -like "*WallsAppPool*"}).path
+	$IISPaths = $app.path
+	#API App Pools
+	$app = (Get-WebApplication | Where-Object { $_.applicationPool -like "*APIServiceAppPool*" })
+	$IISPhysicalPaths += $app.PhysicalPath
+	$IISPaths += $app.path
+	#Module App Pools
+	$app = (Get-WebApplication | Where-Object { $_.applicationPool -like "*ActivityTrackerAppPool*" })
+	$IISPhysicalPaths += $app.PhysicalPath
+	$IISPaths += $app.path
+	$app = (Get-WebApplication | Where-Object { $_.applicationPool -like "*MatterTeamManagerAppPool*" })
+	$IISPhysicalPaths += $app.PhysicalPath
+	$IISPaths += $app.path
+	$app = (Get-WebApplication | Where-Object { $_.applicationPool -like "*MatterTeamManagerAppPoolERRORTEST*" })
+	$IISPhysicalPaths += $app.PhysicalPath
+	$IISPaths += $app.path
+	$IISPhysicalPaths
+	$IISPaths
+	#>
+}
+
+function Pull-LogFiles
+{
+	#get directory toolbox.exe is run from so we can copy log files there 
+	try
+	{
+		$scriptpath = $MyInvocation.MyCommand.Path
+		$dir = Split-Path $scriptpath
+	}
+	catch
+	{
+		#when running through Visual Studio, the path doesn't exist so adding this backup
+		$dir = (Get-Location).Path
+	}
+	
+	#delete log folder if it already exists to prevent duplicate files
+	$folderName = $dir + "\Logs"
+	if (Test-Path $folderName)
+	{
+		Remove-Item $folderName -Force -Recurse
+	}
+	
+	$apps = Get-WallsIISPaths
+	
+	$SourceFiles = @()
+	foreach ($app in $apps)
+	{
+		$searchPath = $app.PhysicalPath + "\Logs"
+		if (Test-Path $searchPath)
+		{
+			$destinationPath = $folderName + "\" + $app.path + "\"
+			#$searchPath
+			#$destinationPath
+			Copy-Item $searchPath $destinationPath -Recurse -force
+		}
+	}
+	##Loop over EXT servers and copy log files
+	$extServers = Get-EXTServices
+	foreach ($extServer in $extServers)
+	{
+		$source = "\\$extServer\C$\Program Files (x86)\Intapp\WBExtensionService\Logs\"
+		$destinationPath = $folderName + "\EXT\" + $extServer + "\"
+		Copy-Item -Path $source -Destination $destinationPath -Recurse -force
+	}
+	
+	#fill zip file until 9MB
+	$fileName = $folderName + "\logs.zip"
+	#delete if exists
+	if (Test-Path $fileName)
+	{
+		Remove-Item $fileName
+	}
+	Add-Type -AssemblyName System.IO.Compression.FileSystem
+	$CompressionLevel = [System.IO.Compression.CompressionLevel]::Optimal
+	
+	$Zip = [System.IO.Compression.ZipFile]::Open($fileName, 'Create')
+	$i = 0
+	Do
+	{
+		#$regex = "(debug\.log\.[1-1]$|extensions\.log\.[1-$logFileCount]$|\.log$)"
+		if ($i -eq 0)
+		{
+			$regex = "\.log$"
+		}
+		else
+		{
+			$regex = "\.log\.$i$"
+		}
+		
+		$SourceFiles = Get-Childitem $folderName -Recurse | Where-Object { $_.Name -match $regex }
+		ForEach ($SourceFile in $SourceFiles)
+		{
+			$SourcePath = $SourceFile.Fullname
+			#$SourceName = $SourceFile.Name
+			$SourceName = $SourcePath.Replace($folderName + "\", "")
+			$null = [System.IO.Compression.ZipFileExtensions]::
+			CreateEntryFromFile($Zip, $SourcePath, $SourceName, $CompressionLevel)
+		}
+		$zipSize = (Get-Item $fileName).Length / 1024
+		$predictNextSize = $zipSize + ($zipSize - $lastSize)
+		$lastSize = $zipSize
+		$i++
+	}
+	while ($predictNextSize -lt 7000 -and $i -lt 10)
+	
+	$Zip.Dispose()
+	$fileName
+}
+
+function AutoEscalation
+{
+	
+	param (
+		[string]$WallsConnectString = $TextboxConnectString.Text,
+		[string]$email = $textboxEmail.Text,
+
+		[string]$htmlRows = 100,
+		[string]$csvRows = 1000,
+		[string]$logFileCount = $textboxLogCount.Text,
+		[bool]$sendEmail = 1,
+		[bool]$takeScreenshot = $checkboxScreenshot.Checked
+	)
+	
+	<#
+	param (
+		[string]$WallsConnectString = 'Data Source=localhost; Initial Catalog=walls;Integrated Security=SSPI;',
+		[string]$IISPath = 'C:\inetpub\wwwroot',
+		[string]$SchedulerLogPath = 'C:\Program Files (x86)\Intapp\WBSchedulerService\Logs',
+		[string]$EXTLogShare = '\\WIN-I0ANQ01RF7C\WBExtensionService\Logs',
+		[string]$email = 'steve.surrette@inflectionIT.com',
+		#feel free to adjust, but be aware of 10MB email size limit
+
+		[string]$htmlRows = '10',
+		[string]$csvRows = '1000',
+		[string]$logFileCount = '5',
+		[bool]$sendEmail = 1,
+		[bool]$takeScreenshot = 1
+	)
+	#>
+	
+	
+	function dataQualityChecks()
+	{
+		$dataHtml = "<h3>Data Quality Checks</h3>"
+		
+		#Matters with no EntityKeyMap entry
+		$SQLQuery = "select count(*) as count from Entities e 
+    left join EntityKeyMap ekm on e.EntityId = ekm.EntityId
+    where ekm.EntityId is null and e.EntityTypeId = 4"
+		$response = Invoke-SQL $SQLQuery
+		$results = $response.rows
+		$dataHtml += "<b>" + $results[0] + "</b>  Matters with no EntityKeyMap entry <br>"
+		
+		#Matters with mismatched client/matter pairing in EntityKeyMap
+		$SQLQuery = "select count(*) as count from Entities e 
+    inner join entities e2 on e.entitytypeid=4 and e2.entitytypeid=3 and e.parentremotesystemid=e2.entityremotesystemid 
+    left join entitykeymap ekm on ekm.entityid=e.entityid and ekm.parententityid=e2.entityid 
+    where ekm.entityid is null"
+		$response = Invoke-SQL $SQLQuery
+		$results = $response.rows
+		$dataHtml += "<b>" + $results[0].count + "</b>  Matters with mismatched client/matter pairing in EntityKeyMap <br>"
+		
+		#Duplicate user/group/client entities
+		$SQLQuery = "SELECT COUNT(*) as count from Entities e
+    join Entities e2 on e.EntityTypeId=e2.EntityTypeId and e.EntityId<>e2.EntityId
+    and 
+    (
+    e.EntityRemoteSystemId=e2.EntityRemoteSystemId
+    --or ISNULL(NULLIF(e.FinancialSystemId, ''), e.EntityRemoteSystemId)=ISNULL(NULLIF(e2.FinancialSystemId, e2.EntityRemoteSystemId), '')
+    --or ISNULL(NULLIF(e.TimeEntrySystemId, ''), e.EntityRemoteSystemId)=ISNULL(NULLIF(e2.TimeEntrySystemId, e2.EntityRemoteSystemId), '')
+    --or ISNULL(NULLIF(e.RecordsSystemId, ''), e.EntityRemoteSystemId)=ISNULL(NULLIF(e2.RecordsSystemId, e2.EntityRemoteSystemId), '')
+    --or ISNULL(NULLIF(e.WindowsNetworkLogon, ''), e.EntityRemoteSystemId)=ISNULL(NULLIF(e2.WindowsNetworkLogon, e2.EntityRemoteSystemId), '')
+    )
+    WHERE e.EntityTypeId<>4"
+		$response = Invoke-SQL $SQLQuery
+		$results = $response.rows
+		$dataHtml += "<b>" + $results[0].count + "</b>  Duplicate user/group/client entities <br>"
+		
+		#Duplicate matter entities
+		$SQLQuery = "select count(*) as count from
+    (
+    select EntityRemoteSystemId, entitytypeid, parentRemoteSystemId, count(entityRemotesystemid) as count from dbo.entities group by EntityRemoteSystemId, entitytypeid, parentRemoteSystemId 
+    having entitytypeid=4 and count(entityRemotesystemid)>1
+    ) t"
+		$response = Invoke-SQL $SQLQuery
+		$results = $response.rows
+		$dataHtml += "<b>" + $results[0].count + "</b>  Duplicate matter entities <br>"
+		
+		#Matters with bad clients
+		$SQLQuery = "select count(*) as count
+    from dbo.entities 
+    where entitytypeid=4 and
+    (
+    ParentRemoteSystemId is null 
+    or ParentRemoteSystemId='' 
+    or ParentTypeId<>3
+    )"
+		$response = Invoke-SQL $SQLQuery
+		$results = $response.rows
+		$dataHtml += "<b>" + $results[0].count + "</b>  Matters with bad clients <br>"
+		
+		#Entities with blank entityRemoteSystemId
+		$SQLQuery = "select count(*) as count
+    from dbo.entities where entityremotesystemid=''"
+		$response = Invoke-SQL $SQLQuery
+		$results = $response.rows
+		$dataHtml += "<b>" + $results[0].count + "</b>  Entities with blank entityRemoteSystemId <br>"
+		
+		#Entity IDs with spaces in the name
+		$SQLQuery = "select count(*) as count
+    from Entities 
+    where ((EntityRemoteSystemId like '% ' OR EntityRemoteSystemId like ' %') 
+    OR (EntityDisplayId like '% ' OR EntityDisplayId like ' %') 
+    OR (TimeEntrySystemId like '% ' OR TimeEntrySystemId like ' %') 
+    OR (RecordsSystemId like '% ' OR RecordsSystemId like ' %') 
+    OR (FinancialSystemId like '% ' OR FinancialSystemId like ' %'))"
+		$response = Invoke-SQL $SQLQuery
+		$results = $response.rows
+		$dataHtml += "<b>" + $results[0].count + "</b>  Entity IDs with spaces in the name <br>"
+		
+		return $dataHtml
+	}
+	
+	function takeScreenshot($File)
+	{
+		Add-Type -AssemblyName System.Windows.Forms
+		Add-type -AssemblyName System.Drawing
+		
+		# Gather Screen resolution information
+		$Screen = [System.Windows.Forms.SystemInformation]::VirtualScreen
+		$Width = $Screen.Width
+		$Height = $Screen.Height
+		$Left = $Screen.Left
+		$Top = $Screen.Top
+		
+		# Create bitmap using the top-left and bottom-right bounds
+		$bitmap = New-Object System.Drawing.Bitmap $Width, $Height
+		
+		# Create Graphics object
+		$graphic = [System.Drawing.Graphics]::FromImage($bitmap)
+		
+		# Capture screen
+		$graphic.CopyFromScreen($Left, $Top, 0, 0, $bitmap.Size)
+		
+		# Save to file
+		$bitmap.Save($File)
+	}
+	
+##START non-functions
+	#*********************** dbo.Config **********************************************#
+	#Set up Config data table for CSV output
+	$table = New-Object system.Data.DataTable ""
+	$col1 = New-Object system.Data.DataColumn 'ConfigVariable', ([string])
+	$col2 = New-Object system.Data.DataColumn 'ConfigValue1', ([string])
+	$col3 = New-Object system.Data.DataColumn 'ConfigValue2', ([string])
+	$col4 = New-Object system.Data.DataColumn 'Category', ([string])
+	$table.columns.add($col1)
+	$table.columns.add($col2)
+	$table.columns.add($col3)
+	$table.columns.add($col4)
+	
+	
+	$OutputText.Text += "Getting non-password configurations...`n"
+	$formIntappWallsToolboxBy.Refresh()
+	#select all non-password configs
+	$SQLQuery = "select ConfigVariable, ConfigValue1, ConfigValue2, Category from config where ConfigVariable not like '%password%' order by ConfigVariable asc"
+	$response = Invoke-SQL $SQLQuery
+	$Configs = $response.rows
+	ForEach ($r in $Configs)
+	{
+		#Create a row
+		$row = $table.NewRow()
+		#Enter data in the row
+		$row.'ConfigVariable' = $r.ConfigVariable
+		$row.'ConfigValue1' = $r.ConfigValue1
+		$row.'ConfigValue2' = $r.ConfigValue2
+		$row.'Category' = $r.Category
+		
+		#Add the row to the table
+		$table.Rows.Add($row)
+	}
+	#export CSV with configs
+	$tabCsv = $table | export-csv "configs.csv" -noType
+	
+	#select all non-password configs for enabled modules/extensions for HTML table in email body
+	$SQLQuery = "select ConfigVariable, ConfigValue1, ConfigValue2, Category from config where ConfigVariable not like '%password%' 
+AND 
+(
+Category in (SELECT Category from dbo.Config where (ConfigVariable like '%IsActive' and ConfigValue1=1))
+OR
+Category in (SELECT ConfigValue2 from dbo.Config where (Category='Modules' and ConfigValue1=1))
+)
+order by Category, ConfigVariable asc
+"
+	$response = Invoke-SQL $SQLQuery
+	$Configs = $response.rows
+	
+	# Create an HTML version of the results
+	$configHtml = "<table border=1><tr><th>ConfigVariable</th><th>ConfigValue1</th><th>ConfigValue2</th><th>Category</th>"
+	ForEach ($r in $Configs)
+	{
+		#Add the row to the table
+		$configHtml += "<tr><td>" + $r.ConfigVariable + "</td><td>" + $r.ConfigValue1 + "</td><td>" + $r.ConfigValue2 + "</td><td>" + $r.Category + "</td></tr>"
+	}
+	$configHtml += "</table>"
+	
+	$OutputText.Text += "Getting error log from database...`n"
+	$formIntappWallsToolboxBy.Refresh()
+	#*********************** dbo.errorlog **********************************************#
+	#Set up Config data table for CSV output
+	$table = New-Object system.Data.DataTable ""
+	$col1 = New-Object system.Data.DataColumn 'ServiceType', ([string])
+	$col2 = New-Object system.Data.DataColumn 'ServiceId', ([string])
+	$col3 = New-Object system.Data.DataColumn 'LogLevel', ([string])
+	$col4 = New-Object system.Data.DataColumn 'LogMessage', ([string])
+	$col5 = New-Object system.Data.DataColumn 'LogException', ([string])
+	$col6 = New-Object system.Data.DataColumn 'Created', ([string])
+	$table.columns.add($col1)
+	$table.columns.add($col2)
+	$table.columns.add($col3)
+	$table.columns.add($col4)
+	$table.columns.add($col5)
+	$table.columns.add($col6)
+	
+	$SQLQuery = "select TOP $csvRows ServiceType, ServiceId, LogLevel, LogMessage, LogException, Created from ErrorLog order by created desc"
+	$response = Invoke-SQL $SQLQuery
+	$Configs = $response.rows
+	ForEach ($r in $Configs)
+	{
+		#Create a row
+		$row = $table.NewRow()
+		#Enter data in the row
+		$row.'ServiceType' = $r.ServiceType
+		$row.'ServiceId' = $r.ServiceId
+		$row.'LogLevel' = $r.LogLevel
+		$row.'LogMessage' = $r.LogMessage
+		$row.'LogException' = $r.LogException
+		$row.'Created' = $r.Created
+		
+		#Add the row to the table
+		$table.Rows.Add($row)
+	}
+	#export CSV with configs
+	$tabCsv = $table | export-csv "errorlog.csv" -noType
+	
+	#select all non-password configs for enabled modules/extensions for HTML table in email body
+	$SQLQuery = "select TOP $htmlRows ServiceType, ServiceId, LogLevel, LogMessage, LogException, Created from ErrorLog where LogLevel<>'Info' order by created desc"
+	$response = Invoke-SQL $SQLQuery
+	$Configs = $response.rows
+	
+	# Create an HTML version of the results
+	$errorHtml = "<table border=1><tr><th>ServiceType</th><th>ServiceId</th><th>LogLevel</th><th>LogMessage</th><th>LogException</th><th>Created</th></tr>"
+	ForEach ($r in $Configs)
+	{
+		#Add the row to the table
+		$errorHtml += "<tr><td>" + $r.ServiceType + "</td><td>" + $r.ServiceId + "</td><td>" + $r.LogLevel + "</td><td>" + $r.LogMessage + "</td><td>" + $r.LogException + "</td><td>" + $r.Created + "</td></tr>"
+	}
+	$errorHtml += "</table>"
+	
+	$OutputText.Text += "Getting Extension Service Jobs...`n"
+	$formIntappWallsToolboxBy.Refresh()
+	#*********************** dbo.extensionservicejobs **********************************************#
+	#Set up Config data table for CSV output
+	$table = New-Object system.Data.DataTable ""
+	$col1 = New-Object system.Data.DataColumn 'ExtensionServiceName', ([string])
+	$col2 = New-Object system.Data.DataColumn 'ExtensionType', ([string])
+	$col3 = New-Object system.Data.DataColumn 'LibraryName', ([string])
+	$col4 = New-Object system.Data.DataColumn 'JobType', ([string])
+	$col5 = New-Object system.Data.DataColumn 'JobXML', ([string])
+	$col6 = New-Object system.Data.DataColumn 'JobState', ([string])
+	$col7 = New-Object system.Data.DataColumn 'FinalStatus', ([string])
+	$col8 = New-Object system.Data.DataColumn 'Retries', ([string])
+	$col9 = New-Object system.Data.DataColumn 'QueueTime', ([string])
+	$col10 = New-Object system.Data.DataColumn 'StateLastChangedTime', ([string])
+	$col11 = New-Object system.Data.DataColumn 'StartTime', ([string])
+	$col12 = New-Object system.Data.DataColumn 'EndTime', ([string])
+	$col13 = New-Object system.Data.DataColumn 'Messages', ([string])
+	$col14 = New-Object system.Data.DataColumn 'OperationId', ([string])
+	$table.columns.add($col1)
+	$table.columns.add($col2)
+	$table.columns.add($col3)
+	$table.columns.add($col4)
+	$table.columns.add($col5)
+	$table.columns.add($col6)
+	$table.columns.add($col7)
+	$table.columns.add($col8)
+	$table.columns.add($col9)
+	$table.columns.add($col10)
+	$table.columns.add($col11)
+	$table.columns.add($col12)
+	$table.columns.add($col13)
+	$table.columns.add($col14)
+	
+	$SQLQuery = "SELECT TOP $csvRows [ExtensionServiceName]
+      ,[ExtensionType]
+      ,[LibraryName]
+      ,[JobType]
+      ,[JobXML]
+      ,[JobState]
+      ,[FinalStatus]
+      ,[Retries]
+      ,[QueueTime]
+      ,[StateLastChangedTime]
+      ,[StartTime]
+      ,[EndTime]
+      ,[Messages]
+      ,[OperationId]
+  FROM [dbo].[ExtensionServiceJobs]
+  ORDER BY [QueueTime] desc"
+	$response = Invoke-SQL $SQLQuery
+	$Configs = $response.rows
+	$extCount = 0
+	ForEach ($r in $Configs)
+	{
+		$extCount++
+		#Create a row
+		$row = $table.NewRow()
+		#Enter data in the row
+		$row.'ExtensionServiceName' = $r.ExtensionServiceName
+		$row.'ExtensionType' = $r.ExtensionType
+		$row.'LibraryName' = $r.LibraryName
+		$row.'JobType' = $r.JobType
+		$row.'JobXML' = $r.JobXML
+		$row.'JobState' = $r.JobState
+		$row.'FinalStatus' = $r.FinalStatus
+		$row.'Retries' = $r.Retries
+		$row.'QueueTime' = $r.QueueTime
+		$row.'StateLastChangedTime' = $r.StateLastChangedTime
+		$row.'StartTime' = $r.StartTime
+		$row.'EndTime' = $r.EndTime
+		$row.'Messages' = $r.Messages
+		$row.'OperationId' = $r.OperationId
+		#Add the row to the table
+		$table.Rows.Add($row)
+	}
+	#export CSV with configs
+	$tabCsv = $table | export-csv "extensionservicejobs.csv" -noType
+	
+	$SQLQuery = "SELECT TOP $csvRows [ExtensionServiceName]
+      ,[ExtensionType]
+      ,[LibraryName]
+      ,[JobType]
+      ,[JobXML]
+      ,[JobState]
+      ,[FinalStatus]
+      ,[Retries]
+      ,[QueueTime]
+      ,[StateLastChangedTime]
+      ,[StartTime]
+      ,[EndTime]
+      ,[Messages]
+      ,[OperationId]
+  FROM [dbo].[ExtensionServiceJobs] WHERE [Messages] is not null
+  ORDER BY [QueueTime] desc"
+	$response = Invoke-SQL $SQLQuery
+	$Configs = $response.rows
+	
+	# Create an HTML version of the results
+	$jobsHtml = "<table border=1><tr><th>ExtensionServiceName</th><th>ExtensionType</th><th>LibraryName</th><th>JobType</th><th>JobXML</th><th>JobState</th><th>FinalStatus</th><th>Retries</th><th>QueueTime</th><th>StateLastChangedTime</th><th>StartTime</th><th>EndTime</th><th>Messages</th><th>OperationId</th></tr>"
+	ForEach ($r in $Configs)
+	{
+		#Add the row to the table
+		$jobsHtml += "<tr><td>" + $r.ExtensionServiceName + "</td><td>" + $r.ExtensionType + "</td><td>" + $r.LibraryName + "</td><td>" + $r.JobType + "</td><td>" + $r.JobXML + "</td><td>" + $r.JobState + "</td><td>" + $r.FinalStatus + "</td><td>" + $r.Retries + "</td><td>" + $r.QueueTime + "</td><td>" + $r.StateLastChangedTime + "</td><td>" + $r.StartTime + "</td><td>" + $r.EndTime + "</td><td>" + $r.Messages + "</td><td>" + $r.OperationId + "</td></tr>"
+	}
+	$jobsHtml += "</table>"
+	
+	#$OutputText.Text += "Running DataQualityChecks...`n"
+	#************************* Data Quality Checks ************************************
+	$dataHTML = dataQualityChecks
+	
+	$OutputText.Text += "Building email...`n"
+	$formIntappWallsToolboxBy.Refresh()
+	#************************* Build email *********************************************
+	$smtpServer = "email-smtp.us-west-2.amazonaws.com"
+	$smtpPort = 587
+	$username = "AKIAIFA53FXKCE3LSPAQ"
+	$password = "AnqR5K8WCwiBV/dzI++GR3idU2hcOcpDy99HDXB7U+bg"
+	$from = "steve.surrette@inflectionIT.com"
+	$to = $email
+	$subject = "Inflection IT Walls Auto-escalation"
+	
+	if ($extCount -eq 0)
+	{
+		$extHTML = "<h3>dbo.extensionservicejobs - no jobs with non-empty Message (see CSV for full)</h3> <br><hr><br>"
+	}
+	else
+	{
+		$extHTML = "<h3>dbo.extensionservicejobs (non-empty Messages only, see CSV for full)</h3>" + $jobsHtml + "<br><hr><br>"
+	}
+	
+	$body = "<html><h2>Inflection IT Auto Escalation</h2>" +
+	"<h3>Question / Issue</h3> <p>" + $textboxIssueText.Text + "</p> <br><hr>" +
+	"<h3>Reproduction Steps:</h3> <p>(Solution Engineer fill out)<br>1. <br>2. <br>3. <br>4. <br>* Actual: <br>* Expected: <br></p> <br><hr>" +
+	$dataHTML + "<br><hr>" +
+	$extHTML +
+	"<h3>dbo.error (INFO type filtered out, see CSV for full)</h3>" + $errorHtml + "<br><hr><br>" +
+	"<h3>dbo.config (filtered for only enabled modules/extensions, see CSV for full minus passwords)</h3>" + $configHtml + "<br><hr><br>" +
+	"</html>"
+	$file = "configs.csv"
+	$att = new-object Net.Mail.Attachment($file)
+	$file = "errorlog.csv"
+	$att2 = new-object Net.Mail.Attachment($file)
+	$file = "extensionservicejobs.csv"
+	$att3 = new-object Net.Mail.Attachment($file)
+	
+	#create Zip file of all log files (up to 7MB)
+	$OutputText.Text += "Pulling log files (this may take ~30 seconds)...`n"
+	$formIntappWallsToolboxBy.Refresh()
+	$fileName = Pull-LogFiles
+	$attLogs = new-object Net.Mail.Attachment($fileName)
+	$OutputText.Text += "Finished pulling log files`n"
+	$formIntappWallsToolboxBy.Refresh()
+	
+	$smtp = new-object Net.Mail.SmtpClient($smtpServer, $smtpPort)
+	$smtp.EnableSsl = $true
+	
+	$smtp.Credentials = new-object Net.NetworkCredential($username, $password)
+	$msg = new-object Net.Mail.MailMessage
+	$msg.From = $from
+	$msg.To.Add($to)
+	$msg.Subject = $subject
+	$msg.Body = $body
+	$msg.IsBodyHtml = 1
+	$msg.Attachments.Add($att)
+	$msg.Attachments.Add($att2)
+	$msg.Attachments.Add($att3)
+	$msg.Attachments.Add($attLogs)
+	
+	#************************* Take screenshot ************************************
+	if ($takeScreenshot -eq 1)
+	{
+		$OutputText.Text += "Taking screenshot...`n"
+		$formIntappWallsToolboxBy.Refresh()
+		$File = "screenshot.bmp"
+		takeScreenshot($File)
+		$msg.Attachments.Add($File)
+	}
+	#************************* Send email *********************************************
+	if ($sendEmail -eq 1)
+	{
+		$result = $smtp.Send($msg)
+		$result
+		##$OutputText.Text += "Email sent to $email`n"
+	}
+	$msg.Dispose()
+}
+
+$buttonAutoEscallation_Click = {
+	$timerJobTracker.Enabled=$true
+	$buttonAutoEscallation.Enabled = $false
+	$OutputTabs.SelectedTab = $textTab
+	$OutputText.Text = "Starting auto-escalation data gathering`n"
+	AutoEscalation
+	$OutputText.Text += "Finished - Auto-escalation email sent to: " + $textboxEmail.Text
+	$buttonAutoEscallation.Enabled = $false
+}
+
+
+$labelAutoEscalation_Click={
+	#TODO: Place custom script here
+	$TextboxConnectString | Export-Clixml save.xml
+}
+
+$labelWallsPath_Click = {
+	
+}
+
+$tabEscalation_Click={
+	#TODO: Place custom script here
+	
+}
+
+$labelThisScriptAutomatica_Click={
+	#TODO: Place custom script here
+	
+}
+
+$label6_Click={
+	#TODO: Place custom script here
+	
+}
+
+$labelUserDB_Click={
+	#TODO: Place custom script here
+	
+}
+
+$tabAutomation_Click={
+	#TODO: Place custom script here
+	
+}
+
+$wallRole_text_WRName_TextChanged={
+	#TODO: Place custom script here
+	
+}
+
+$buttonSaveInputs_Click = {
+	$OutputTabs.SelectedTab = $textTab
+	$OutputText.Text = "Saving input textbox values for future runs...`n"
+	#"a", "b", "c" | Export-Clixml save.xml
+	$TextboxConnectString.Text, $textboxWallId.Text, $textboxCSVRows.Text, $textboxEmail.Text, $textboxExtShare.Text, $textboxhAPIPath.Text, $textboxhClientName.Text, $textboxhCMDB.Text, $textboxhCMServer.Text, $textboxhCMSource.Text, $textboxhCustomizations.Text, $textboxhEmail.Text, $textboxhIBVersion.Text, $textboxHTMLRows.Text, $textboxhUserDB.Text, $textboxhUserServer.Text, $textboxhUserSource.Text, $textboxhWallsPath.Text, $textboxIISPath.Text, $textboxLogCount.Text, $textboxSchedulerShare.Text | Export-Clixml save.xml
+	$OutputText.Text += "Finished"
+}
+
+$buttonViewRecentErrorLogs_Click={
+	#TODO: Place custom script here
+	$buttonExtensionServiceJobs.Enabled = $false
+	$OutputText.Text = "Querying ErrorLog table...`n"
+	$OutputTabs.SelectedTab = $textTab
+	#$buttonSearch.Enabled = $false
+	#Create a New Job using the Job Tracker
+	Add-JobTracker -Name 'JobName' -ArgumentList $TextboxConnectString.Text, $checkboxInfo.Checked, $checkboxWarning.Checked `
+				   -JobScript {
+		#--------------------------------------------------
+		#TODO: Set a script block
+		#Important: Do not access form controls from this script block.
+		
+		Param ($connectString, $checkInfo, $checkWarning) #Pass any arguments using the ArgumentList parameter
+		
+		#	---------------------------------
+		#	Sample Code to Load Sortable Data
+		#	---------------------------------
+		#Get-WmiObject Win32_Process -Namespace 'Root\CIMV2'
+		
+		$WallsConnectString = $connectString
+		
+		$typeText = ""
+		if ($checkInfo)
+		{
+			$typeText += ", 'Info'"	
+		}
+		if ($checkWarning)
+		{
+			$typeText += ", 'Warning'"
+		}
+		
+		$sqlCommand = "select top 1000 * from errorlog where LogLevel in ('Error'$typeText) order by created desc"
+		#$sqlCommand = "select * from entities"
+		$connectionString = $wallsConnectString
+		
+		$connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
+		$command = new-object system.data.sqlclient.sqlcommand($sqlCommand, $connection)
+		$connection.Open()
+		
+		$adapter = New-Object System.Data.sqlclient.sqlDataAdapter $command
+		$dataset = New-Object System.Data.DataSet
+		$adapter.Fill($dataSet) | Out-Null
+		
+		$connection.Close()
+		$dataSet.Tables
+		#$results = $response.rows
+		
+		#--------------------------------------------------
+	}`
+				   -CompletedScript {
+		Param ($Job)
+		$results = Receive-Job -Job $Job
+		$results = ConvertTo-DataTable -InputObject $results -FilterWMIProperties
+		if ($results)
+		{
+			Load-DataGridView -DataGridView $datagridviewResults -Item $results -AutoSizeColumns DisplayedCells
+		}
+		else
+		{
+			$datagridviewResults.Rows.Clear()
+		}
+		#Enable the Button
+		$buttonExtensionServiceJobs.ImageIndex = -1
+		$buttonExtensionServiceJobs.Enabled = $true
+		#$buttonSearch.Enabled = $true
+		$rowCount = $datagridviewResults.RowCount
+		if ($rowCount -eq 0)
+		{
+			$OutputText.Text += "The ErrorLog table is empty `n"
+		}
+		else
+		{
+			$OutputText.Text += "$rowCount rows in Error Log selected `n"
+			$OutputTabs.SelectedTab = $tableTab
+		}
+		
+	}`
+				   -UpdateScript {
+		Param ($Job)
+		$results = Receive-Job -Job $Job -Keep
+		#Animate the Button
+		if ($null -ne $buttonExtensionServiceJobs.ImageList)
+		{
+			if ($buttonExtensionServiceJobs.ImageIndex -lt $buttonExtensionServiceJobs.ImageList.Images.Count - 1)
+			{
+				$buttonExtensionServiceJobs.ImageIndex += 1
+			}
+			else
+			{
+				$buttonExtensionServiceJobs.ImageIndex = 0
+			}
+		}
+	}
+}
+
+$buttonLoadExtensions_Click = {
+	
+
+}
+
+$buttonRunSQLF5_Click = {
+	$buttonStop.Visible = $true
+	$buttonRunSQLF5.Visible = $false
+	
+	$OutputText.Text = "Running SQL query...`n"
+	$OutputTabs.SelectedTab = $textTab
+	if ($datagridviewResults.RowCount > 0)
+	{
+		$datagridviewResults.DataSource=$null
+	}
+	
+	$connectString = $comboboxSQLExtensions.Text
+	if ($connectString -eq "Walls")
+	{
+		$connectString = $TextboxConnectString.Text
+	}
+	#$buttonSearch.Enabled = $false
+	#Create a New Job using the Job Tracker
+	Add-JobTracker -Name 'JobName' -ArgumentList $connectString, $textboxSQLQuery.Text `
+				   -JobScript {
+		#--------------------------------------------------
+		#TODO: Set a script block
+		#Important: Do not access form controls from this script block.
+		
+		Param ($connectString, $sqlCommand) #Pass any arguments using the ArgumentList parameter
+		
+		#	---------------------------------
+		#	Sample Code to Load Sortable Data
+		#	---------------------------------
+		#Get-WmiObject Win32_Process -Namespace 'Root\CIMV2'
+		
+		
+		$WallsConnectString = $connectString
+		$connectionString = $wallsConnectString
+		
+		$connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
+		$command = new-object system.data.sqlclient.sqlcommand($sqlCommand, $connection)
+		try
+		{
+			$connection.Open()
+		}
+		catch
+		{
+			"connectError"
+			exit
+		}		
+		$adapter = New-Object System.Data.sqlclient.sqlDataAdapter $command
+		$dataset = New-Object System.Data.DataSet
+		try
+		{
+			$adapter.Fill($dataSet) | Out-Null
+		}
+		catch
+		{
+			$_.Exception.Message
+		}
+		
+		$connection.Close()
+		$dataSet.Tables
+		#$results = $response.rows
+		
+		#--------------------------------------------------
+	}`
+				   -CompletedScript {
+		Param ($Job)
+		$results = Receive-Job -Job $Job
+		#Enable the Button
+		$buttonStop.Visible = $false
+		$buttonRunSQLF5.Visible = $true
+		
+		if ($results -eq "connectError")
+		{
+			$OutputText.Text += "Connection string failed`n"
+			$textboxRowCount.Text = "Error"
+		}
+		elseif ($results.GetType().Name -eq "String")
+		{
+			$OutputText.Text += $results
+			$textboxRowCount.Text = "Error"
+		}
+		else
+		{
+			$results = ConvertTo-DataTable -InputObject $results -FilterWMIProperties
+			if ($results)
+			{
+				Load-DataGridView -DataGridView $datagridviewResults -Item $results -AutoSizeColumns DisplayedCells
+			}
+			else
+			{
+				$datagridviewResults.DataSource = $null
+			}
+			
+			$rowCount = $datagridviewResults.RowCount
+			if ($rowCount -eq 0)
+			{
+				$OutputText.Text += "The query returned 0 results`n"
+				$textboxRowCount.Text = "0"
+			}
+			else
+			{
+				$OutputText.Text += "$rowCount rows returned `n"
+				$textboxRowCount.Text = $rowCount
+				$OutputTabs.SelectedTab = $tableTab
+			}
+		}
+		
+	}`
+				   -UpdateScript {
+		Param ($Job)
+		$results = Receive-Job -Job $Job -Keep
+	}
+}
+
+$buttonWallRole_SelectedIndexChanged={
+	#TODO: Place custom script here
+	if ($buttonWallRole.SelectedIndex -eq "4")
+	{
+		$comboboxSQLExtensions.Items.Clear()
+		$comboboxSQLExtensions.Items.Add("Walls")
+		$comboboxSQLExtensions.SelectedIndex = 0
+		#*********************** get secured libraries ************************************#
+		$sb = New-Object System.Data.Common.DbConnectionStringBuilder
+		#select ConnectionStrings and LibraryXMLs for active extensions
+		#special replace required to match Webview Category with Elite connection string
+		$SQLQuery = "select '<libraries>
+		<library>
+			<name>' + Category + '</name>
+			<connectString>' + ConfigValue1 + '</connectString>
+		</library>
+		</libraries>' as ConfigValue1, Category from Config where ConfigVariable like '%ConnectionString' and REPLACE(Category, 'Webview', 'Elite') in
+		(
+		SELECT REPLACE(Category, 'Webview', 'Elite') from dbo.Config where (ConfigVariable like '%IsActive' and ConfigValue1=1)
+		)
+		UNION ALL
+		select ConfigValue1, Category from Config where ConfigVariable like '%LibraryXML' and Category in
+		(
+		SELECT Category from dbo.Config where (ConfigVariable like '%IsActive' and ConfigValue1=1)
+		)
+		"
+		$response = Invoke-SQL $SQLQuery
+		$Configs = $response.rows
+		ForEach ($r in $Configs)
+		{
+			#parse XML
+			$xml = [xml]$r.ConfigValue1
+			$libraries = $xml.SelectNodes("//libraries/library")
+			foreach ($library in $libraries)
+			{
+				$connectString = $library.connectString.Trim();
+				if ($connectString -ne '')
+				{
+					$comboboxSQLExtensions.Items.Add($connectString)
+				}
+				
+				$sb.set_ConnectionString($library.connectString.Trim())
+				
+				#Enter data in the row
+				#$row.'Category' = $r.Category
+				#$row.'name' = $library.name.Trim()
+			}
+		}
+	}
+}
+
+$textboxSQLQuery_KeyDown=[System.Windows.Forms.KeyEventHandler]{
+#Event Argument: $_ = [System.Windows.Forms.KeyEventArgs]
+	#TODO: Place custom script here
+	#$OutputText.Text = "Key pressed:" + $_.KeyCode
+	if ($_.KeyCode -eq "F5")
+	{
+		$buttonRunSQLF5.PerformClick()
+	}
+}
+
+$textboxSQLQuery_TextChanged={
+	#TODO: Place custom script here
+	
+}
+
+$buttonStop_Click={
+	#TODO: Place custom script here
+	$OutputText.Text += "Stopping SQL Query...`n"
+	Stop-JobTracker -Name 'JobName'
+	$buttonRunSQLF5.Visible = $true
+	$buttonStop.Visible = $false
+	$OutputText.Text += "SQL Query stopped.`n"
+}
+
+$comboboxSQLExtensions_SelectedIndexChanged={
+	#TODO: Place custom script here
+	
+}
+
+$buttonViewConfigs_Click={
+	#TODO: Place custom script here
+	$buttonViewConfigs.Enabled = $false
+	$OutputText.Text = "Querying dbo.config table...`n"
+	$OutputTabs.SelectedTab = $textTab
+	#$buttonViewConfigs.Enabled = $false
+	#Create a New Job using the Job Tracker
+	Add-JobTracker -Name 'JobName' -ArgumentList $TextboxConnectString.Text `
+				   -JobScript {
+		#--------------------------------------------------
+		#TODO: Set a script block
+		#Important: Do not access form controls from this script block.
+		
+		Param ($connectString) #Pass any arguments using the ArgumentList parameter
+		
+		#	---------------------------------
+		#	Sample Code to Load Sortable Data
+		#	---------------------------------
+		#Get-WmiObject Win32_Process -Namespace 'Root\CIMV2'
+		
+		$WallsConnectString = $connectString
+		$sqlCommand = "select * from config"
+		$connectionString = $wallsConnectString
+		
+		$connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
+		$command = new-object system.data.sqlclient.sqlcommand($sqlCommand, $connection)
+		try
+		{
+			$connection.Open()
+		}
+		catch
+		{
+			"connectError"
+			exit
+		}
+		
+		$adapter = New-Object System.Data.sqlclient.sqlDataAdapter $command
+		$dataset = New-Object System.Data.DataSet
+		$adapter.Fill($dataSet) | Out-Null
+		
+		$connection.Close()
+		$dataSet.Tables
+		#$results = $response.rows
+		
+		#--------------------------------------------------
+	}`
+				   -CompletedScript {
+		Param ($Job)
+		$results = Receive-Job -Job $Job
+		
+		#Enable the Button
+		$buttonViewConfigs.ImageIndex = -1
+		$buttonViewConfigs.Enabled = $true
+		
+		if ($results -eq "connectError")
+		{
+			$OutputText.Text += "Connection string failed`n"
+		}
+		else
+		{
+			$results = ConvertTo-DataTable -InputObject $results -FilterWMIProperties
+			if ($results)
+			{
+				Load-DataGridView -DataGridView $datagridviewResults -Item $results -AutoSizeColumns DisplayedCells
+			}
+			
+			$rowCount = $datagridviewResults.RowCount
+			if ($rowCount -eq 0)
+			{
+				$OutputText.Text += "The ExtensionServiceJobs table is empty `n"
+			}
+			else
+			{
+				$OutputText.Text += "$rowCount rows in Extension Service Jobs `n"
+				$OutputTabs.SelectedTab = $tableTab
+			}
+		}
+		
+	}`
+				   -UpdateScript {
+		Param ($Job)
+		$results = Receive-Job -Job $Job -Keep
+		#Animate the Button
+		if ($null -ne $buttonViewConfigs.ImageList)
+		{
+			if ($buttonViewConfigs.ImageIndex -lt $buttonViewConfigs.ImageList.Images.Count - 1)
+			{
+				$buttonViewConfigs.ImageIndex += 1
+			}
+			else
+			{
+				$buttonViewConfigs.ImageIndex = 0
+			}
+		}
+	}
+}
+
+$datagridviewResults_DataBindingComplete=[System.Windows.Forms.DataGridViewBindingCompleteEventHandler]{
+#Event Argument: $_ = [System.Windows.Forms.DataGridViewBindingCompleteEventArgs]
+	#TODO: Place custom script here
+	#$datagridviewResults.AutoResizeColumns();
+}
+
+$buttonTestAll_Click={
+	#TODO: Place custom script here
+	$OutputText.Text = "Checking connection strings for active extensions...`n"
+	$sqlCommand = "select getdate()"
+	foreach($connectionString in $comboboxSQLExtensions.Items)
+	{
+		if ($connectionString -eq "Walls")
+		{
+			$connectionString = $TextboxConnectString.Text
+		}
+		$OutputText.Text += "Testing: " + $connectionString + "..."
+		
+		$connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
+		$command = new-object system.data.sqlclient.sqlcommand($sqlCommand, $connection)
+		try
+		{
+			$connection.Open()
+		}
+		catch
+		{
+			$OutputText.Text += " Connection FAILED`n"
+			continue
+		}
+		$adapter = New-Object System.Data.sqlclient.sqlDataAdapter $command
+		$dataset = New-Object System.Data.DataSet
+		try
+		{
+			$adapter.Fill($dataSet) | Out-Null
+		}
+		catch
+		{
+			$OutputText.Text += " Query FAILED`n" + $_.Exception.Message + "`n`n"
+			continue
+		}
+		
+		$connection.Close()
+		$OutputText.Text += " Success`n"
+	}
+	$OutputText.Text += "Finished tests`n"
+}
+
+function getColumnChar($i)
+{
+	$columnPreChar = ""
+	#ASCII: A = 65, Z = 80.
+	#i = 1 returns A (not i = 0)
+	#To support more than 26 columns, must have logic to keep creating unique column names AA, AB, AAA, AAB, AAC, etc.
+	while ($i -ge 26)
+	{
+		$columnPreChar += "A"
+		$i = $i - 26
+	}
+	
+	$result = $columnPreChar + [char]($i + 64)
+	$result
+}
+
+function Save-Table-CSV
+{
+	#Set up Config data table for CSV output
+	$table = New-Object system.Data.DataTable ""
+	
+	$i = 0
+	foreach ($c in $datagridviewResults.Columns)
+	{	
+		$columnName = $datagridviewResults.Columns[$i].Name
+		$col1 = New-Object system.Data.DataColumn "$columnName", ([string])
+		$table.columns.add($col1)
+		$i++
+	}
+	
+	ForEach ($r in $datagridviewResults.Rows)
+	{
+		#Create a row
+		$row = $table.NewRow()
+		$rowNumber = $r.Cells[0].Value
+		if ($rowNumber -eq $null -or $rowNumber -eq "")
+		{
+			#skip this final row
+		}
+		else
+		{
+			#Enter data in the row
+			$i = 0
+			foreach ($c in $datagridviewResults.Columns)
+			{
+				$columnName = $datagridviewResults.Columns[$i].Name
+				$row."$columnName" = $r.Cells[$i].Value
+				$i++
+			}
+			#Add the row to the table
+			$table.Rows.Add($row)
+		}
+	}
+	#export CSV with configs
+	$tabCsv = $table | export-csv "Walls_Toolbox.csv" -noType
+	$table
+}
+
+$buttonPopout_Click={
+	$table = Save-Table-CSV
+	$table | Out-GridView
+}
+
+function Output-Data($data, $text)
+{
+	Load-DataGridView -DataGridView $datagridviewResults -Item $data -AutoSizeColumns DisplayedCells
+	$rowCount = $datagridviewResults.RowCount
+	if ($rowCount -eq 0)
+	{
+		$OutputText.Text += "No $text rows`n"
+		$OutputTabs.SelectedTab = $textTab
+	}
+	else
+	{
+		$OutputText.Text += "$rowCount $text rows`n"
+		$OutputTabs.SelectedTab = $tableTab
+	}
+	$rowCount
+}
+
+$buttonSeeConfigsLike_Click = {
+	$SQLQuery = "select * from Config where ConfigVariable like '%"+ $textboxConfigsLike.Text + "%'"
+	$configs = Invoke-SQL $SQLQuery
+	
+	$rowCount = Output-Data $configs "configs"
+	if ($rowCount -gt 0)
+	{
+		$textboxConfigToUpdate.Text = $configs.Rows[0].ConfigVariable
+		$textboxConfigValue1.Text = $configs.Rows[0].ConfigValue1
+	}
+	#$configs | Out-GridView -Title "Configs like $text"
+}
+
+function Save-Table-CSV
+{
+	#Set up Config data table for CSV output
+	$table = New-Object system.Data.DataTable ""
+	$col1 = New-Object system.Data.DataColumn 'Type', ([string])
+	$col2 = New-Object system.Data.DataColumn 'Final', ([string])
+	$col3 = New-Object system.Data.DataColumn 'Original', ([string])
+	$col4 = New-Object system.Data.DataColumn 'Timestamp', ([string])
+	$table.columns.add($col1)
+	$table.columns.add($col2)
+	$table.columns.add($col3)
+	$table.columns.add($col4)
+	
+	ForEach ($r in $datagridviewChangeLog.Rows)
+	{
+		#Create a row
+		$row = $table.NewRow()
+		$rowNumber = $r.Cells[0].Value
+		if ($rowNumber -eq $null -or $rowNumber -eq "")
+		{
+			#skip this final row
+		}
+		else
+		{
+			#Enter data in the row
+			$row.'Type' = $r.Cells[0].Value
+			$row.'Final' = $r.Cells[1].Value
+			$row.'Original' = $r.Cells[2].Value
+			$row.'Timestamp' = $r.Cells[3].Value
+			#Add the row to the table
+			$table.Rows.Add($row)
+		}
+	}
+	#export CSV with configs
+	$tabCsv = $table | export-csv "Walls_ChangeLog.csv" -noType
+	$table
+	$OutputTabs.SelectedTab = $tabpageChangeLog
+}
+
+$buttonUpdateValue_Click = {
+	$SQLQuery = "select ConfigValue1 from Config where ConfigVariable = '" + $textboxConfigToUpdate.Text + "'"
+	$configs = Invoke-SQL $SQLQuery
+	if ($configs.Rows.Count -gt 0)
+	{
+		$originalValue = $configs.Rows[0].ConfigValue1
+		$date = Get-Date -Format g
+		$SQLQuery = "update Config set ConfigValue1='" + $textboxConfigValue1.Text + "' where ConfigVariable = '" + $textboxConfigToUpdate.Text + "'"
+		$configs = Invoke-SQL $SQLQuery
+		$datagridviewChangeLog.Rows.Add(@("Config", $textboxConfigValue1.Text, $originalValue, $date))
+		Save-Table-CSV
+	}
+	else
+	{
+		$msg = "Config: " + $textboxConfigToUpdate.Text + " not found" #+ $_.Exception.Message
+		[System.Windows.Forms.MessageBox]::Show($msg)
+	}
+}
+
+$buttonLoadValue_Click={
+	#TODO: Place custom script here
+	
+}
+
+$linklabelConnectionStrings_LinkClicked=[System.Windows.Forms.LinkLabelLinkClickedEventHandler]{
+#Event Argument: $_ = [System.Windows.Forms.LinkLabelLinkClickedEventArgs]
+	#TODO: Place custom script here
+	$textboxConfigValue1.Text = "server=localhost;database=son_db;Integrated Security=SSPI
+server=localhost;database=son_db;User Id=login;Password=pass"
+}
+
+$linklabelLibraryXML_LinkClicked=[System.Windows.Forms.LinkLabelLinkClickedEventHandler]{
+#Event Argument: $_ = [System.Windows.Forms.LinkLabelLinkClickedEventArgs]
+	#TODO: Place custom script here
+	$textboxConfigValue1.Text = "<libraries>
+	<library secured=`"1`" monitored=`"0`">
+		<name>NY</name>
+		<connectString>server=localhost; database=worksite; Integrated Security=SSPI</connectString>
+	</library>
+	<library secured=`"1`" monitored=`"0`">
+		<name>NY</name>
+		<connectString>server=localhost;database=son_db;User Id=login;Password=pass</connectString>
+	</library>
+</libraries>"
+}
+
+$buttonSeeWallTypes_Click={
+	$SQLQuery = "select * from WallAccessTypes"
+	$wallTypes = Invoke-SQL $SQLQuery
+	
+	$rowCount = Output-Data $wallTypes "wall types"
+	#$configs | Out-GridView -Title "Configs like $text"
+}
+
+$labelSideConfig_Click={
+	#TODO: Place custom script here
+	
+}
+
+$buttonLoadTypeId_Click = {
+	$SQLQuery = "select wat.*, pc.Name as PolicyCategory from WallAccessTypes wat
+	join PolicyCategories pc on wat.PolicyCategoryId=pc.PolicyCategoryId
+	WHERE wat.WallAccessTypeId='" + $textboxWallAccessTypeId.Text + "'"
+	
+	$wallType = Invoke-SQL $SQLQuery
+	if ($wallType.Rows.Count -eq 1)
+	{
+		$textboxWallAccessType.Text = $wallType.WallAccessType
+		$comboboxSelfMaintaining.Text = $wallType.SelfMaintaining
+		$comboboxRequireAck.Text = $wallType.RequireAckForAccess
+		$textboxOrderId.Text = $wallType.OrderId
+		$textboxIcon.Text = $wallType.Icon
+		$textboxDescription.Text = $wallType.Description
+		$textboxSideConfig.Text = $wallType.SideConfig
+		$comboboxAutoAddMT.Text = $wallType.AutoAddMatterTeams
+		$comboboxRelationshipPairing.Text = $wallType.RelationshipPairing
+		$comboboxPolicyCategory.Text = $wallType.PolicyCategory
+		$comboboxIntervalType.Text = $wallType.DefaultSelfMaintainingIntervalType
+	}
+	else
+	{
+		$textboxWallAccessTypeId.text = "X"
+		$buttonSeeWallTypes.PerformClick()
+	}
+}
+
+$linklabelExample_LinkClicked=[System.Windows.Forms.LinkLabelLinkClickedEventHandler]{
+#Event Argument: $_ = [System.Windows.Forms.LinkLabelLinkClickedEventArgs]
+	$textboxSideConfig.Text = "<Wall>
+ <SidesConfig>
+  <Side id=`"0`" defaultName=`"Side 1`">
+   <SidePart id=`"0`" wizardText=`"Select the client(s) or matter(s) which require access restriction:`">
+    <Client>1</Client>
+    <Matter>1</Matter>
+    <DynamicClientGroup>1</DynamicClientGroup>
+    <DynamicMatterGroup>1</DynamicMatterGroup>
+   </SidePart>
+   <SidePart id=`"1`" wizardText=`"Select users who should have access to the selected client(s) or matter(s):`">
+    <User>1</User>
+    <Group>1</Group>
+    <MatterTeam>1</MatterTeam>
+    <DynamicUserGroup>1</DynamicUserGroup>
+   </SidePart>
+   <SelfMaintainingDisabled>1</SelfMaintainingDisabled>
+  </Side>
+ </SidesConfig>
+ <MinSideCount>1</MinSideCount> 
+ <MaxSideCount>1</MaxSideCount> 
+ <InsidersSupport>1</InsidersSupport> 
+ <ObjectReleaseExceptionsSupport>0</ObjectReleaseExceptionsSupport>
+ <PassiveInclusionarySupport>0</PassiveInclusionarySupport>
+</Wall>"
+}
+
+$buttonUpdate_Click = {
+	#get the PolicyCategoryId required for the WallAccessType table based on the name in the PolicyCategory dropdown
+	$SQLQuery = "select PolicyCategoryId from PolicyCategories 
+WHERE Name='" + $comboboxPolicyCategory.Text + "'"
+	$policyCategory = Invoke-SQL $SQLQuery
+	$policyCategoryId = $policyCategory.PolicyCategoryId
+	
+	$SQLQuery = "update WallAccessTypes set 
+WallAccessType='" + $textboxWallAccessType.Text + "', 
+SelfMaintaining='" + $comboboxSelfMaintaining.Text + "', 
+RequireAckForAccess='" + $comboboxRequireAck.Text + "', 
+OrderId='" + $textboxOrderId.Text + "', 
+Icon='" + $textboxIcon.Text + "', 
+Description='" + $textboxDescription.Text + "', 
+SideConfig='" + $textboxSideConfig.Text + "', 
+AutoAddMatterTeams='" + $comboboxAutoAddMT.Text + "', 
+RelationshipPairing='" + $comboboxRelationshipPairing.Text + "', 
+PolicyCategoryId='" + $policyCategoryId + "', 
+DefaultSelfMaintainingIntervalType='" + $comboboxIntervalType.Text + "'
+WHERE WallAccessTypeId='" + $textboxWallAccessTypeId.Text + "'"
+	
+	Invoke-SQL $SQLQuery
+	$buttonSeeWallTypes.PerformClick()
+	$buttonRestartAppPools.PerformClick()
+}
+
+$buttonDelete_Click={
+	$SQLQuery = "delete from WallAccessTypes
+	WHERE WallAccessTypeId='" + $textboxWallAccessTypeId.Text + "'"
+	
+	Invoke-SQL $SQLQuery
+	$textboxWallAccessTypeId.text = "X"
+	$buttonSeeWallTypes.PerformClick()
+	$buttonRestartAppPools.PerformClick()
+}
+
+$buttonCreate_Click={
+	#get the PolicyCategoryId required for the WallAccessType table based on the name in the PolicyCategory dropdown
+	$SQLQuery = "select PolicyCategoryId from PolicyCategories 
+WHERE Name='" + $comboboxPolicyCategory.Text + "'"
+	$policyCategory = Invoke-SQL $SQLQuery
+	$policyCategoryId = $policyCategory.PolicyCategoryId
+	
+	$SQLQuery = "INSERT INTO [dbo].[WallAccessTypes]
+           ([WallAccessType]
+           ,[SelfMaintaining]
+           ,[RequireAckForAccess]
+           ,[OrderId]
+           ,[Icon]
+           ,[Description]
+           ,[SideConfig]
+           ,[AutoAddMatterTeams]
+           ,[RelationshipPairing]
+           ,[PolicyCategoryId]
+           ,[DefaultSelfMaintainingIntervalType])
+     VALUES
+(
+'" + $textboxWallAccessType.Text + "', 
+'" + $comboboxSelfMaintaining.Text + "', 
+'" + $comboboxRequireAck.Text + "', 
+'" + $textboxOrderId.Text + "', 
+'" + $textboxIcon.Text + "', 
+'" + $textboxDescription.Text + "', 
+'" + $textboxSideConfig.Text + "', 
+'" + $comboboxAutoAddMT.Text + "', 
+'" + $comboboxRelationshipPairing.Text + "', 
+'" + $policyCategoryId + "', 
+'" + $comboboxIntervalType.Text + "'
+)
+SELECT SCOPE_IDENTITY() AS [SCOPE_IDENTITY]
+"
+	
+	$result = Invoke-SQL $SQLQuery
+	$newId = $result.SCOPE_IDENTITY
+	$textboxWallAccessTypeId.text = $newId
+	
+	$buttonSeeWallTypes.PerformClick()
+	$buttonRestartAppPools.PerformClick()
+}
+
+$tabpageEntityUDFs_Click={
+	#TODO: Place custom script here
+	
+}
+
+$datagridviewChangeLog_CellContentClick=[System.Windows.Forms.DataGridViewCellEventHandler]{
+#Event Argument: $_ = [System.Windows.Forms.DataGridViewCellEventArgs]
+	
+}
+
+$buttonSeeEntityUDFs_Click={
+	$SQLQuery = "select * from EntityCustomFieldConfig ORDER BY EntityTypeId ASC, Field ASC"
+	$UDFs = Invoke-SQL $SQLQuery
+	
+	$rowCount = Output-Data $UDFs "EntityCustomFieldConfig"
+}
+
+$buttonLoadUDF_Click={
+	$SQLQuery = "select e.*, et.EntityType from EntityCustomFieldConfig e
+	join EntityTypes et on e.EntityTypeId=et.EntityTypeId
+	WHERE e.Field='" + $comboboxUDFField.Text + "'
+	AND et.EntityType='" + $comboboxUDFEntityType.Text + "'"
+	
+	$entityUDF = Invoke-SQL $SQLQuery
+	if ($entityUDF.Rows.Count -eq 1)
+	{
+		$comboboxUDFField.Text = $entityUDF.Field
+		$comboboxUDFEntityType.Text = $entityUDF.EntityType
+		$textboxUDFDisplayName.Text = $entityUDF.DisplayName
+		$textboxUDFDescription.Text = $entityUDF.Description
+		$comboboxUDFType.Text = $entityUDF.Type
+		$textboxUDFDateTimeFormat.Text = $entityUDF.DateTimeFormat
+		#checkboxes
+		$checkboxIsIncludedInNotifica.Checked = $entityUDF.IsIncludedInNotifications
+		$checkboxIsIncludedInEntityTo.Checked = $entityUDF.IsIncludedInEntityTooltip
+		$checkboxIsMultiValued.Checked = $entityUDF.IsMultiValued
+		$checkboxIsIncludedInExtended.Checked = $entityUDF.IsIncludedInExtendedValidation
+		$checkboxIsIncludedInGeneralI.Checked = $entityUDF.IsIncludedInGeneralInformation
+		$checkboxIsConfidential.Checked = $entityUDF.IsConfidential
+	}
+	else
+	{
+		$comboboxUDFField.text = "X"
+		$buttonSeeEntityUDFs.PerformClick()
+	}
+	
+	#Load ENUM Values
+	$SQLQuery = "select * from EntityCustomComboValues e
+	join EntityTypes et on e.EntityTypeId=et.EntityTypeId
+	WHERE e.Field='" + $comboboxUDFField.Text + "'
+	AND et.EntityType='" + $comboboxUDFEntityType.Text + "'"
+	$ENUMs = Invoke-SQL $SQLQuery
+	$listboxENUMValues.Items.Clear()
+	foreach ($ENUM in $ENUMs)
+	{
+		$listboxENUMValues.Items.Add($ENUM.Value)	
+	}
+}
+
+$button4_Click={
+	$SQLQuery = "select EntityTypeId from EntityTypes 
+WHERE EntityType='" + $comboboxUDFEntityType.Text + "'"
+	$entityType = Invoke-SQL $SQLQuery
+	$entityTypeId = $entityType.EntityTypeId
+	
+	$DateTimeFormat = "'" + $textboxUDFDateTimeFormat.Text + "'"
+	if ($DateTimeFormat -eq "''")
+	{
+		$DateTimeFormat = "NULL"
+	}
+	
+	$SQLQuery = "update e set 
+e.Field='" + $comboboxUDFField.Text + "', 
+e.EntityTypeId=" + $entityTypeId + ", 
+e.DisplayName='" + $textboxUDFDisplayName.Text + "', 
+e.Description='" + $textboxUDFDescription.Text + "', 
+e.Type='" + $comboboxUDFType.Text + "', 
+e.DateTimeFormat=" + $DateTimeFormat + ", 
+e.IsIncludedInNotifications='" + $checkboxIsIncludedInNotifica.Checked + "', 
+e.IsIncludedInEntityTooltip='" + $checkboxIsIncludedInEntityTo.Checked + "',  
+e.IsMultiValued='" + $checkboxIsMultiValued.Checked + "', 
+e.IsIncludedInExtendedValidation='" + $checkboxIsIncludedInExtended.Checked + "',
+e.IsIncludedInGeneralInformation='" + $checkboxIsIncludedInGeneralI.Checked + "',
+e.IsConfidential='" + $checkboxIsConfidential.Checked + "'
+from EntityCustomFieldConfig e
+join EntityTypes et on e.EntityTypeId=et.EntityTypeId 
+WHERE e.Field='" + $comboboxUDFField.Text + "'
+AND et.EntityType='" + $comboboxUDFEntityType.Text + "'"
+	
+	Invoke-SQL $SQLQuery
+	$buttonSeeEntityUDFs.PerformClick()
+	$buttonRestartAppPools.PerformClick()
+}
+
+$button1_Click={
+	$SQLQuery = "delete e from EntityCustomFieldConfig e
+	join EntityTypes et on e.EntityTypeId=et.EntityTypeId 
+	WHERE e.Field='" + $comboboxUDFField.Text + "'
+	AND et.EntityType='" + $comboboxUDFEntityType.Text + "'"
+	
+	Invoke-SQL $SQLQuery
+	$comboboxUDFField.text = "X"
+	$buttonSeeEntityUDFs.PerformClick()
+	$buttonRestartAppPools.PerformClick()
+}
+
+$button2_Click = {
+	#Create EntityCustomFieldConfig
+	$SQLQuery = "select e.*, et.EntityType from EntityCustomFieldConfig e
+	join EntityTypes et on e.EntityTypeId=et.EntityTypeId
+	WHERE e.Field='" + $comboboxUDFField.Text + "'
+	AND et.EntityType='" + $comboboxUDFEntityType.Text + "'"
+	
+	$entityUDF = Invoke-SQL $SQLQuery
+
+	$DateTimeFormat = "'" + $textboxUDFDateTimeFormat.Text + "'"
+	if ($DateTimeFormat -eq "''")
+	{
+		$DateTimeFormat = "NULL"
+	}
+	
+	if ($entityUDF.Rows.Count -eq 0)
+	{
+	
+		$SQLQuery = "select EntityTypeId from EntityTypes 
+		WHERE EntityType='" + $comboboxUDFEntityType.Text + "'"
+		$entityType = Invoke-SQL $SQLQuery
+		$entityTypeId = $entityType.EntityTypeId
+		
+		$SQLQuery = "INSERT INTO [dbo].[EntityCustomFieldConfig]
+	           ([Field]
+	           ,[EntityTypeId]
+	           ,[DisplayName]
+	           ,[Type]
+	           ,[Description]
+	           ,[IsIncludedInNotifications]
+	           ,[IsIncludedInEntityTooltip]
+	           ,[IsMultiValued]
+	           ,[IsIncludedInExtendedValidation]
+	           ,[IsIncludedInGeneralInformation]
+	           ,[IsConfidential]
+	           ,[DateTimeFormat])
+	     VALUES
+		(
+		'" + $comboboxUDFField.Text + "', 
+		" + $entityTypeId + ", 
+		'" + $textboxUDFDisplayName.Text + "', 
+		'" + $comboboxUDFType.Text + "', 
+		'" + $textboxUDFDescription.Text + "', 
+		'" + $checkboxIsIncludedInNotifica.Checked + "', 
+		'" + $checkboxIsIncludedInEntityTo.Checked + "',  
+		'" + $checkboxIsMultiValued.Checked + "', 
+		'" + $checkboxIsIncludedInExtended.Checked + "',
+		'" + $checkboxIsIncludedInGeneralI.Checked + "',
+		'" + $checkboxIsConfidential.Checked + "',
+		" + $DateTimeFormat + " 
+		)
+		"
+		Invoke-SQL $SQLQuery
+		$listboxENUMValues.Items.Clear()
+		$buttonSeeEntityUDFs.PerformClick()
+	}
+	else
+	{
+		$msg = "Can not insert - the Field / EntityType combination already has an existing UDF. Please pick a unique combination. 
+Field='" + $comboboxUDFField.Text + "'
+EntityType='" + $comboboxUDFEntityType.Text + "'
+"
+		[System.Windows.Forms.MessageBox]::Show($msg)
+	}
+	$buttonRestartAppPools.PerformClick()
+}
+
+$buttonENUMAdd_Click={
+	$SQLQuery = "select e.*, et.EntityType from EntityCustomFieldConfig e
+	join EntityTypes et on e.EntityTypeId=et.EntityTypeId
+	WHERE e.Field='" + $comboboxUDFField.Text + "'
+	AND et.EntityType='" + $comboboxUDFEntityType.Text + "'"
+	
+	$entityUDF = Invoke-SQL $SQLQuery
+	
+	$DateTimeFormat = "'" + $textboxUDFDateTimeFormat.Text + "'"
+	if ($DateTimeFormat -eq "''")
+	{
+		$DateTimeFormat = "NULL"
+	}
+	
+	if ($entityUDF.Rows.Count -eq 0)
+	{
+		$msg = "UDF does not exist, please create ENUM UDF first so PrimaryKeys work:
+Field='" + $comboboxUDFField.Text + "'
+EntityType='" + $comboboxUDFEntityType.Text + "'
+"
+		[System.Windows.Forms.MessageBox]::Show($msg)
+	}
+	elseif($entityUDF.TYPE -eq 'ENUM')
+	{		
+		$SQLQuery = "INSERT INTO [dbo].[EntityCustomComboValues]
+           ([Field]
+           ,[EntityTypeId]
+           ,[Value])
+	     VALUES
+		(
+		'" + $entityUDF.Field + "', 
+		" + $entityUDF.EntityTypeId + ", 
+		'" + $textboxEnumAdd.Text + "'
+		)
+		"
+		Invoke-SQL $SQLQuery
+		$listboxENUMValues.Items.Add($textboxEnumAdd.Text)
+		$listboxENUMValues.SelectedItem = $textboxEnumAdd.Text
+		$textboxEnumAdd.Text = ""
+	}
+	else
+	{
+		$msg = "UDF Type must be ENUM:. 
+Field='" + $entityUDF.Field + "'
+EntityType='" + $entityUDF.EntityType + "'
+Type='" + $entityUDF.TYPE + "'
+"
+		[System.Windows.Forms.MessageBox]::Show($msg)
+	}
+}
+
+$buttonENUMDelete_Click = {
+	$SQLQuery = "select EntityTypeId from EntityTypes 
+		WHERE EntityType='" + $comboboxUDFEntityType.Text + "'"
+	$entityType = Invoke-SQL $SQLQuery
+	$entityTypeId = $entityType.EntityTypeId
+	
+	$SQLQuery = "delete from EntityCustomComboValues
+	WHERE Field='" + $comboboxUDFField.Text + "'
+	AND EntityTypeId = $entityTypeId
+	AND Value='" + $listboxENUMValues.Items[$listboxENUMValues.SelectedIndex] + "'"
+	Invoke-SQL $SQLQuery
+	
+	$listboxENUMValues.Items.Remove($listboxENUMValues.SelectedItem)
+}
+
+$buttonSeeWallUDFs_Click={
+	$SQLQuery = "select * from WallCustomFieldConfig ORDER BY PolicyCategoryGroupId, Field"
+	$UDFs = Invoke-SQL $SQLQuery
+	
+	$rowCount = Output-Data $UDFs "WallCustomFieldConfig"
+}
+
+$button8_Click = {
+	#Load UDFs
+	$SQLQuery = "select w.*, pc.Name from WallCustomFieldConfig w
+	join PolicyCategoryGroups pc on w.PolicyCategoryGroupId=pc.PolicyCategoryGroupId
+	WHERE w.Field='" + $comboboxWallUDFField.Text + "'
+	AND pc.Name='" + $comboboxWallUDFPolicyType.Text + "'"
+	
+	$wallUDF = Invoke-SQL $SQLQuery
+	if ($wallUDF.Rows.Count -eq 1)
+	{
+		$comboboxWallUDFField.Text = $wallUDF.Field
+		$comboboxWallUDFType.Text = $wallUDF.Type
+		$textboxWallENUMDisplayName.Text = $wallUDF.DisplayName
+		$textboxWallENUMDescription.Text = $wallUDF.Description
+		$comboboxWallUDFPolicyType.Text = $wallUDF.Name
+
+		#checkboxes
+		$checkboxWallENUMIsRequired.Checked = $wallUDF.IsRequired
+	}
+	else
+	{
+		$comboboxWallUDFField.text = "X"
+		$buttonSeeWallUDFs.PerformClick()
+	}
+	
+	#Load ENUM Values
+	$SQLQuery = "select w.* from WallCustomComboValues w
+	join PolicyCategoryGroups pc on w.PolicyCategoryGroupId=pc.PolicyCategoryGroupId
+	WHERE w.Field='" + $comboboxWallUDFField.Text + "'
+	AND pc.Name='" + $comboboxWallUDFPolicyType.Text + "'"
+	$ENUMs = Invoke-SQL $SQLQuery
+	$listboxWallENUMValues.Items.Clear()
+	foreach ($ENUM in $ENUMs)
+	{
+		$listboxWallENUMValues.Items.Add($ENUM.Value)
+	}
+}
+
+$button9_Click={
+	#Update WallCustomFieldConfig
+	$SQLQuery = "select PolicyCategoryGroupId from PolicyCategoryGroups 
+WHERE Name='" + $comboboxWallUDFPolicyType.Text + "'"
+	$policyType = Invoke-SQL $SQLQuery
+	$policyTypeId = $policyType.PolicyCategoryGroupId
+	
+	$DateTimeFormat = "'" + $textboxUDFDateTimeFormat.Text + "'"
+	if ($DateTimeFormat -eq "''")
+	{
+		$DateTimeFormat = "NULL"
+	}
+	
+	$SQLQuery = "update w set 
+	w.Field='" + $comboboxWallUDFField.Text + "', 
+	w.PolicyCategoryGroupId=" + $policyTypeId + ", 
+	w.DisplayName='" + $textboxWallENUMDisplayName.Text + "', 
+	w.Description='" + $textboxWallENUMDescription.Text + "', 
+	w.Type='" + $comboboxWallUDFType.Text + "', 
+	w.IsRequired='" + $checkboxWallENUMIsRequired.Checked + "'
+	from WallCustomFieldConfig w
+	join PolicyCategoryGroups pc on w.PolicyCategoryGroupId=pc.PolicyCategoryGroupId
+	WHERE w.Field='" + $comboboxWallUDFField.Text + "'
+	AND pc.Name='" + $comboboxWallUDFPolicyType.Text + "'"
+
+	
+	Invoke-SQL $SQLQuery
+	$buttonSeeWallUDFs.PerformClick()
+	$buttonRestartAppPools.PerformClick()
+}
+
+$button6_Click={
+	$SQLQuery = "delete w from WallCustomFieldConfig w
+	join PolicyCategoryGroups pc on w.PolicyCategoryGroupId=pc.PolicyCategoryGroupId
+	WHERE w.Field='" + $comboboxWallUDFField.Text + "'
+	AND pc.Name='" + $comboboxWallUDFPolicyType.Text + "'"
+	
+	Invoke-SQL $SQLQuery
+	$comboboxWallUDFField.text = "X"
+	$buttonSeeWallUDFs.PerformClick()
+	$buttonRestartAppPools.PerformClick()
+}
+
+$button7_Click = {
+	#Create WallCustomFieldConfig
+	$SQLQuery = "select w.*, pc.Name from WallCustomFieldConfig w
+	join PolicyCategoryGroups pc on w.PolicyCategoryGroupId=pc.PolicyCategoryGroupId
+	WHERE w.Field='" + $comboboxWallUDFField.Text + "'
+	AND pc.Name='" + $comboboxWallUDFPolicyType.Text + "'"
+	$wallUDF = Invoke-SQL $SQLQuery
+
+	if ($wallUDF.Rows.Count -eq 0)
+	{
+		$SQLQuery = "select PolicyCategoryGroupId from PolicyCategoryGroups 
+		WHERE Name='" + $comboboxWallUDFPolicyType.Text + "'"
+		$policyType = Invoke-SQL $SQLQuery
+		$policyTypeId = $policyType.PolicyCategoryGroupId
+
+		$SQLQuery = "INSERT INTO [dbo].[WallCustomFieldConfig]
+           ([Field]
+           ,[DisplayName]
+           ,[IsRequired]
+           ,[Type]
+           ,[Description]
+           ,[PolicyCategoryGroupId])
+	     VALUES
+		(
+		'" + $comboboxWallUDFField.Text + "', 
+		'" + $textboxWallENUMDisplayName.Text + "', 		
+		'" + $checkboxWallENUMIsRequired.Checked + "', 		
+		'" + $comboboxWallUDFType.Text + "', 
+		'" + $textboxWallENUMDescription.Text + "', 
+		" + $policyTypeId + "
+		)
+		"
+		Invoke-SQL $SQLQuery
+		$buttonSeeWallUDFs.PerformClick()
+		$listboxWallENUMValues.Items.Clear()
+	}
+	else
+	{
+		$msg = "Can not insert - the Field / PolicyCategoryGroupId combination already has an existing UDF. Please pick a unique combination. 
+Field='" + $comboboxWallUDFField.Text + "'
+[PolicyCategoryGroupId]='" + $comboboxWallUDFType.Text + "'
+"
+		[System.Windows.Forms.MessageBox]::Show($msg)
+	}
+	$buttonRestartAppPools.PerformClick()
+}
+
+$buttonAdd_Click={
+	
+	$SQLQuery = "select w.*, pc.Name from WallCustomFieldConfig w
+	join PolicyCategoryGroups pc on w.PolicyCategoryGroupId=pc.PolicyCategoryGroupId
+	WHERE w.Field='" + $comboboxWallUDFField.Text + "'
+	AND pc.Name='" + $comboboxWallUDFPolicyType.Text + "'"
+	
+	$wallUDF = Invoke-SQL $SQLQuery
+	
+	if ($wallUDF.Rows.Count -eq 0)
+	{
+		$msg = "UDF does not exist, please create ENUM UDF first so PrimaryKeys work:
+Field='" + $comboboxWallUDFField.Text + "'
+PolicyType='" + $comboboxWallUDFPolicyType.Text + "'
+"
+		[System.Windows.Forms.MessageBox]::Show($msg)
+	}
+	elseif ($wallUDF.TYPE -eq 'ENUM')
+	{
+		$SQLQuery = "INSERT INTO [dbo].[WallCustomComboValues]
+           ([Field]
+           ,[Value]
+           ,[PolicyCategoryGroupId])
+	     VALUES
+		(
+		'" + $wallUDF.Field + "', 
+		'" + $textboxWallENUMAdd.Text + "',
+		" + $wallUDF.PolicyCategoryGroupId + "
+		)
+		"
+		Invoke-SQL $SQLQuery
+		$listboxWallENUMValues.Items.Add($textboxWallENUMAdd.Text)
+		$listboxWallENUMValues.SelectedItem = $textboxWallENUMAdd.Text
+		$textboxWallEnumAdd.Text = ""
+	}
+	else
+	{
+		$msg = "UDF Type must be ENUM:. 
+Field='" + $wallUDF.Field + "'
+PolicyType='" + $wallUDF.Name + "'
+Type='" + $wallUDF.TYPE + "'
+"
+		[System.Windows.Forms.MessageBox]::Show($msg)
+	}
+}
+
+$button5_Click = {
+	#Delete WallUDF ENUM
+	$SQLQuery = "select PolicyCategoryGroupId from PolicyCategoryGroups 
+	WHERE Name='" + $comboboxWallUDFPolicyType.Text + "'"
+	$policyType = Invoke-SQL $SQLQuery
+	$policyTypeId = $policyType.PolicyCategoryGroupId
+	
+	$SQLQuery = "delete from WallCustomComboValues
+	WHERE Field='" + $comboboxWallUDFField.Text + "'
+	AND PolicyCategoryGroupId = $policyTypeId
+	AND Value='" + $listboxWallENUMValues.Items[$listboxWallENUMValues.SelectedIndex] + "'"
+	Invoke-SQL $SQLQuery
+	
+	$listboxWallENUMValues.Items.Remove($listboxWallENUMValues.SelectedItem)
+}
+
+$buttonCompareConfiguration_Click={
+	$SQLQuery = "select * from Config where ConfigVariable like '%" + $textboxCompareConfigsLike.Text + "%' order by ConfigVariable ASC"
+	$configsFrom = Invoke-SQL $SQLQuery $textboxWallsFrom.Text
+	$configsTo = Invoke-SQL $SQLQuery $textboxWallsTo.Text
+	$fromTitle = "Configs From: " + $textboxWallsFrom.Text
+	$toTitle = "Configs To: " + $textboxWallsTo.Text
+	#$configsFrom | Out-GridView -Title $fromTitle
+	#$configsTo | Out-GridView -Title $toTitle
+	
+	$configsTo.PrimaryKey = $configsTo.Columns[1]
+	$global:update = @()
+	$checkedlistboxCompare.Items.Clear()
+	
+	foreach ($rowFrom in $configsFrom)
+	{
+		$variable = $rowFrom.ConfigVariable
+		$fromValue = $rowFrom.ConfigValue1
+		$toValue = $configsTo.Rows.Find($variable).ConfigValue1
+		if ($fromValue -eq $toValue)
+		{
+			
+		}
+		else
+		{
+			$row = new-object psobject
+			Add-Member -InputObject $row -MemberType NoteProperty -Name variable -Value $variable
+			Add-Member -InputObject $row -MemberType NoteProperty -Name fromValue -Value $fromValue
+			Add-Member -InputObject $row -MemberType NoteProperty -Name toValue -Value $toValue
+			$global:update += $row
+			$itemText = $variable + ":|" + $toValue + "|<--|" + $fromValue + "|"
+			$checkedlistboxCompare.Items.Add($itemText)
+		}
+	}
+}
+
+$buttonUpdateChecked_Click={
+	foreach ($i in $checkedlistboxCompare.CheckedIndices)
+	{
+		if ($i -ne -1)
+		{
+			$global:update[$i]
+			$SQLQuery = "update Config set ConfigValue1='" + $global:update[$i].fromValue + "' where ConfigVariable = '" + $global:update[$i].variable + "'"
+			$configs = Invoke-SQL $SQLQuery $textboxWallsTo.Text
+			$datagridviewChangeLog.Rows.Add(@("ConfigCompare", $global:update[$i].fromValue, $global:update[$i].toValue, $date))
+		}
+	}
+	$buttonCompareConfiguration.PerformClick()
+	Save-Table-CSV
+}
+
+$TextboxConnectString_TextChanged={
+	#TODO: Place custom script here
+	
+}
+
+$buttonRestartSchedulerServ_Click={
+	Restart-Service "WBSchedulerService"
+}
+
+$buttonLoad_Click={
+	$OutputTabs.SelectedTab = $textTab
+	$OutputText.Text = "Loading Extension Services...`n"
+	$SQLQuery = "select ConfigValue1 from Config where ConfigVariable = 'MessageBus::ReceiverXML'"
+	$configs = Invoke-SQL $SQLQuery
+	$messageBusXML = [xml]$configs.ConfigValue1
+	$receivers = $messageBusXML.receivers.receiver
+	$comboboxExt.Items.Clear()
+	foreach ($r in $receivers)
+	{
+		$pos = $r.IndexOf("@")
+		$extServer = $r.Substring($pos + 1)
+		$comboboxExt.Items.Add($extServer)
+	}
+	$comboboxExt.SelectedIndex = 0
+	$OutputText.Text += "Loading Extension Services completed.`n"
+}
+
+$buttonRecycleAppPools_Click={
+	Recycle-AppPools
+}
+
+$button11_Click = {
+	Restart-AllEXTService
+}
+
+$button10_Click={
+	Restart-Service "WBSchedulerService"
+}
+
+$buttonPerformSelfMaintaini_Click={
+	$OutputTabs.SelectedTab = $textTab
+	#TODO: Place custom script here
+	$wallsAPI = New-WebServiceProxy -Uri "http://localhost/APIService/APIService.svc?wsdl" -Namespace WebServiceProxy -Class WB -UseDefaultCredential
+	$Extension = $ExtensionsCombo.Text
+	$OutputText.Text = "Starting PerformSelfMaintaining`n"
+	if ($Extension -eq "ALL")
+	{
+		$Extension = ""
+	}
+	$wallsAPI.PerformSelfMaintaining($null)
+	$OutputText.Text += "Successfully kicked off PerformSelfMaintaining`n"
+}
+
+$listboxWallENUMValues_SelectedIndexChanged={
+	#TODO: Place custom script here
+	
+}
+
+function Get-Extensions($includeSM = $false)
+{
+	#*********************** gets secured extensions ************************************#
+	$sb = New-Object System.Data.Common.DbConnectionStringBuilder
+	if ($includeSM -eq $false)
+	{
+		$selfMaintainingWHERE = " and Category not like '%SelfMaintaining'"
+	}
+	else
+	{
+		$selfMaintainingWHERE = ""
+	}
+	#select ConnectionStrings and LibraryXMLs for active extensions
+	#special replace required to match Webview Category with Elite connection string
+	$SQLQuery = "SELECT Category from dbo.Config where (ConfigVariable like '%IsActive' and ConfigValue1=1 $selfMaintainingWHERE) order by Category "
+	$response = Invoke-SQL $SQLQuery $TextboxConnectString.Text
+	$Configs = $response.rows	
+	
+	return $Configs.Category
+}
+
+function Get-SystemENUMFromCategory($category)
+{
+	switch ($category)
+	{
+		#exceptions where SystemType doesn't map exactly to Catalog
+		"LegalKEYAdverseParties" { $SystemENUM = "LEGALKEY_ADVERSE_PARTIES" }
+		"Interwoven" { $SystemENUM = "iManage" }
+		"WebView" { $SystemENUM = "EliteWebView" }
+		"FileShare" { $SystemENUM = "FileSystem" }
+		"Elite3E" { $SystemENUM = "Elite3EEthicalWalls" }
+		"Elite3E" { $SystemENUM = "Elite3EMattWorkTkpr" }
+		"OmniaSelfMaintaining" { $SystemENUM = "Omnia" }
+		#Default:
+		default { $SystemENUM = $category.Replace("SelfMaintaining", "_SELF_MAINTAINING") }
+	}
+	return $SystemENUM
+}
+
+function CreateWallRoleXML
+{
+	$Extensions = Get-Extensions
+	$WallRoleXML = "<systems>"
+	ForEach ($ext in $Extensions)
+	{
+		#$OutputText.Text += $ext
+		$SystemENUM = Get-SystemENUMFromCategory($ext)
+		$WallRoleXML += "
+    <system>
+        <type>" + $SystemENUM + "</type>
+        <access type=`"allow`">ON</access>
+        <access type=`"deny`">ON</access>
+    </system>`n"
+	}
+	$WallRoleXML += "</systems>"	
+	
+	return $WallRoleXML
+}
+
+function Add-WallRoleToAllWallTypes($wallRoleId)
+{
+	if ($PSVersionTable.PSVersion.Major -lt 3)
+	{
+		throw "This script requires Powershell version 3 or higher to run." + `
+		"You can download Powershell 3 from https://www.microsoft.com/en-us/download/details.aspx?id=34595"
+	}
+	[Reflection.Assembly]::LoadWithPartialName("System.Xml.Linq") | Out-Null
+	
+	$roleXML = "<Roles><Role>$wallRoleId</Role></Roles>"
+	$wallTypes = Invoke-SQL "select WallAccessTypeId, SideConfig from WallAccessTypes"
+	
+	ForEach ($wallType in $wallTypes)
+	{
+		$sideConfig_Orig = $wallType.SideConfig
+		$wallTypeId = $wallType.WallAccessTypeId
+        <# Add code to:
+        Identify each SidePart XML in $sideConfig_orig that contains <User>1</User> (there will always be at least one, but may have multiple)
+        For each SidePart above:
+        - If there is no <Roles></Roles> tags, add it right before the ending </SidesConfig> tag including $wallRoleId. For example, if $wallRoleId=2: <Roles><Role>2</Role></Roles>
+        - If <Roles></Roles> does exist, but doesn't have the role for $wallRoleId, add it.
+        - If <Roles></Roles> does exist and the role for $wallRoleId is included, do nothing. 
+
+        Example of 2 sided wall with WallRole 2 configured: <Wall>   <SidesConfig>     <Side id="0" defaultName="Side 1" wizardText="Select the first matter for this screen and any users or groups on the matter's team:">       <SidePart id="0">         <Client>1</Client>         <Matter>1</Matter>         <DynamicMatterGroup>1</DynamicMatterGroup>         <DynamicClientGroup>1</DynamicClientGroup>       </SidePart>       <SidePart id="1">         <Group>1</Group>         <DynamicUserGroup>1</DynamicUserGroup>         <User>1</User>         <Roles>                 <Role>2</Role>             </Roles>       </SidePart>     </Side>     <Side id="1" defaultName="Side 2" wizardText="Select the second matter for this screen and any users or groups on the matter's team:">       <SidePart id="0">         <Client>1</Client>         <Matter>1</Matter>         <DynamicMatterGroup>1</DynamicMatterGroup>         <DynamicClientGroup>1</DynamicClientGroup>       </SidePart>       <SidePart id="1">         <Group>1</Group>         <DynamicUserGroup>1</DynamicUserGroup>         <User>1</User>         <Roles>                 <Role>2</Role>             </Roles>       </SidePart>     </Side>   </SidesConfig>   <MinSideCount>2</MinSideCount>   <MaxSideCount>10</MaxSideCount> </Wall>
+        Example of 2 sided wall with no WallRoles configured: <Wall>   <SidesConfig>     <Side id="0" defaultName="Lateral" wizardText="Select the lateral hire:">       <SidePart id="0" />       <SidePart id="1">         <User>1</User>       </SidePart>     </Side>     <Side id="1" defaultName="Conflicting Clients or Matters" wizardText="Select the client(s) and/or matter(s) for which the lateral has a conflict:">       <SidePart id="0">         <Client>1</Client>         <Matter>1</Matter>          <DynamicMatterGroup>1</DynamicMatterGroup>         <DynamicClientGroup>1</DynamicClientGroup>       </SidePart>       <SidePart id="1" />     </Side>   </SidesConfig>   <MinSideCount>2</MinSideCount>   <MaxSideCount>2</MaxSideCount> </Wall>
+        #>
+		#$OutputText.Text += "Wall Role Id: " + $wallRoleId + "`n"
+		#$OutputText.Text += "Role XML: " + $roleXML + "`n"
+		#$OutputText.Text += "Wall Type ID: " + $wallTypeId + "`n"	
+		#$OutputText.Text += "Side Config`n" + $sideConfig_Orig + "`n"	
+		try
+		{			
+			$xml = [System.Xml.Linq.XDocument]::Parse($sideConfig_Orig)
+			$OutputText.Text += "wallTypeId=" + $wallTypeId + ": XML is valid for processing`n"
+								
+			$wasChanged = $false
+			$xml.Descendants("SidePart") | % {				
+				$sidePart = $_
+				#$OutputText.Text += $sidePart + "`n`n"
+			
+				if ($sidePart.Descendants("User").Count -gt 0)
+				{
+					$roles = $sidePart.Descendants("Roles")
+					if ($roles.Count -gt 0)
+					{
+						# If the Role tag with specific value exists inside the Roles tag
+						$role = $roles.Elements("Role") | ? { $_.Value -eq $wallRoleId }
+						if ($role)
+						{
+							# The node Role with the given value exists under the Roles. Do something, if necessary.
+						}
+						else
+						{
+							# The node Role with the given value does not exists under the Roles, add it.
+							$roles[0].Add([System.Xml.Linq.XElement]::Parse($roleXML).Elements())
+							$wasChanged = $true
+						}
+					}
+					else
+					{
+						# The node Roles does not exists, add it as the last node under the SidePart.
+						$sidePart.Add([System.Xml.Linq.XElement]::Parse($roleXML))
+						$wasChanged = $true
+						
+						#$OutputText.Text += $sidePart + "`n`n"
+					}
+				}
+			}
+			if ($wasChanged)
+			{
+				#$sideConfig_New = '<?xml version="1.0" encoding="utf-8"?>' + $xml.ToString() # Use this line if you need to save the adjusted xml along with xml declaration
+				#$sideConfig_New = $xml.ToString("DisableFormatting") # Use this line to avoid outputting new line characters
+				$sideConfig_New = $xml.ToString()
+				#if change was made, use this query
+				Invoke-SQL "update WallAccessTypes set SideConfig='$sideConfig_New' WHERE WallAccessTypeId=$wallTypeId"
+				#$OutputText.Text += $sideConfig_New + "`n`n`n"
+			}
+			else
+			{
+				"No Change`n"
+			}
+		}
+		catch
+		{
+			# XML string is invalid (not well-formed or similar)
+			$OutputText.Text += $wallTypeId + " XML is not valid!! `n`n"
+			#write-host $("wallTypeId=" + $wallTypeId + ": ") -NoNewLine
+			#write-host $_.Exception.Message -ForegroundColor Red
+			continue
+		}
+	}
+}
+
+$buttonGenerateWallRole_Click={
+	#TODO: Place custom script here
+	$OutputTabs.SelectedTab = $textTab
+	$WallRole_Name = $wallRole_text_WRName.Text.Trim()
+	
+	#Other Variables:
+	$EntityRelationshipType = 'Attorney / Secretary Pairing'
+	$Config_PairedId = "PairedRelationshipID"
+	$Config_PairedWR = "PairedWallRole"
+	
+	if ($WallRole_Name.Length -eq 0)
+	{
+		$OutputText.Text = "Please enter a valid Wall Role name`n"
+	}
+	else
+	{
+		$WallRole_Name = $WallRole_Name.Substring(0,100)
+		$OutputText.Text = "Generating Wall Role: " + $WallRole_Name + "`n"
+			
+		#Now get extensions and build Wall Role XML
+		$WallRoleXML = CreateWallRoleXML
+		$OutputText.Text += "Role XML:`n"
+		$OutputText.Text += $WallRoleXML + "`n`n"
+		
+		$SQLQuery = "insert WallRoles values('" + $WallRole_Name + "','" + $WallRoleXML + "')"
+		#$OutputText.Text += $SQLQuery + "`n`n"
+		Invoke-SQL $SQLQuery $TextboxConnectString.Text
+		
+		if ($checkboxCreateASPairing.Checked)
+		{
+			#Get WallRoleID of the role just created, and update the relevant config values
+			$SQLQuery = "select top 1 WallRoleId from WallRoles 
+						where WallRoleName = '" + $WallRole_Name + "'
+						order by WallRoleId desc"
+			$response = Invoke-SQL $SQLQuery $TextboxConnectString.Text
+			$WallRoleId = $response.rows
+			$WallRoleId = $WallRoleId[0].WallRoleId			
+			
+			#Insert to EntityRelationshipTypes			
+			$SQLQuery = "insert EntityRelationshipTypes(Description, PrimaryType,SubordinateType
+						, IsDirectRelationshipValidated, IsSharedRelationshipValidated)
+						values('" + $EntityRelationshipType + "', 'Attorney', 'Secretary', 1, 0)"
+			Invoke-SQL $SQLQuery $TextboxConnectString.Text
+			$OutputText.Text += "Inserting to EntityRelatioshipTypes`n"
+			
+			$SQLQuery = "select top 1 EntityRelationshipTypeId from EntityRelationshipTypes
+						where Description = '" + $EntityRelationshipType + "'
+						order by EntityRelationshipTypeId desc"
+			$response = Invoke-SQL $SQLQuery $TextboxConnectString.Text
+			$ERTId = $response.rows
+			$ERTId = $ERTId[0].EntityRelationshipTypeId
+						
+			$SQLQuery = "update Config set ConfigValue1 = " + $ERTId + "where ConfigVariable = '" + $Config_PairedId + "'"
+			Invoke-SQL $SQLQuery $TextboxConnectString.Text
+			$OutputText.Text += "Updating PairedRelationshipID config variable`n"
+			
+			$SQLQuery = "update Config set ConfigValue1 = " + $WallRoleId + "where ConfigVariable = '" + $Config_PairedWR + "'"
+			Invoke-SQL $SQLQuery $TextboxConnectString.Text
+			$OutputText.Text += "Updating PairedWallRole config variable`n`n"
+			
+			Add-WallRoleToAllWallTypes $WallRoleId
+			$OutputText.Text += "Adding wall role to all wall types`n`n"
+		}
+	}	
+}
+
+$comboboxUDFEntityType_SelectedIndexChanged={
+	#TODO: Place custom script here
+	
+}
+
+$comboboxUDFField_SelectedIndexChanged={
+	#TODO: Place custom script here
+	
+}

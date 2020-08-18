@@ -1,0 +1,33 @@
+email: $email						input - email
+client_name: $client_name 			input - ClientName
+customizations: $customizations		input - Customizations
+cm_source: $cm_source  				input - CMSource
+IBversion: $ibversion 				input - IBversion
+cm_db: $cm_db 						input - CM DB
+cm_server: $cm_server 				input - CM Server
+user_db: $user_db					input - User DB
+user_server: $user_server  			input - User Server
+user_source: $user_source 			input - User Source
+SRTtext: $SRTtext					Hardcoded to 'Yes, installed on IIS server'
+SE: $SE 							$TextInfo.ToTitleCase([regex]::Match($email, "^[^@]*").Value.Replace(".", " "))
+version: $version 					$SQLQuery = "select ConfigValue1 from config where configvariable = 'AppVersion'" | $response = Invoke-SQL $SQLQuery | $Configs = $response.rows | $version = $Configs.ConfigValue1
+modules: $modules 					$SQLQuery = "SELECT ConfigValue2 as Category from dbo.Config where (Category='Modules' and ConfigValue1=1) and ConfigValue2 not in ('Intapp Walls', 'Walls and Security') ORDER BY ConfigValue2" | Convert to JSON table
+appusers: $appusers  				$SQLQuery = "select Name, Email, ar.RoleName from ApplicationUsers au join ApplicationRolesWB ar on ar.RoleId=au.WBRoleId where userId<>-1 and IsDeleted=0 and IsEnabled=1" | convert to json table
+connections: $libraries 			SQL Query -> Convert to JSON table
+schedules: $schedules 				SQL Query -> Convert to JSON table
+SQLVersion: $SQLVersion				$SQLQuery = "select @@VERSION as version" | $response = Invoke-SQL $SQLQuery | $Configs = $response.rows | $SQLVersion = $Configs.version
+extensions: $extensions				$SQLQuery = "SELECT Category from dbo.Config where (ConfigVariable like '%IsActive' and ConfigValue1=1) ORDER BY Category" | Convert to JSON table
+EXTServers: $EXTServers				$SQLQuery = "select ConfigValue1 from Config where configvariable = 'MessageBus::ReceiverXML'" | Convert to JSON table
+configs: $configs					SQL Query -> Convert to JSON table
+ServiceAccount: $ServiceAccount		$SQLQuery = "select ConfigValue1 from Config where configvariable = 'ExtensionServiceUsername'" | $response = Invoke-SQL $SQLQuery | $Configs = $response.rows | $ServiceAccount = $Configs.ConfigValue1
+SQLDB: $SQLDB						$WallsConnectionString->Initial Catalog
+SQLServer: $SQLServer				$WallsConnectionString->Data source
+SQL_IP: $SQL_IP						$SQL_IP = Resolve-DnsName $SQLServerVar | $SQL_IP = $SQL_IP[0].IPAddress
+WindowsVersion: $WindowsVersion		$WindowsVersion = (Get-WmiObject -class Win32_OperatingSystem).Caption
+IIS_hostname: $IIS_hostname			$IIS_hostname = Hostname
+IIS_IP: $IIS_IP						$IIS_IP = Resolve-DnsName $IIS_hostname -Type A | $IIS_IP[0].IPAddress.ToString()
+IIS_Sites: $IIS_Sites				$apps = Get-WallsIISPaths (converted to JSON table)
+IIS_AppPools: $IIS_AppPools			$IIS_AppPools = Get-ChildItem –Path IIS:\AppPools | Out-String | $IIS_AppPools = $IIS_AppPools.Split("`n") (Converted to JSON table)
+
+
+

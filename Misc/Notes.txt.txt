@@ -1,0 +1,210 @@
+Target Market
+- IT users at law firms / Partners
+	Kind of technical (but not super technical)
+	Focus on getting data (nothing that can bring down Walls - no updates/deletes for now)
+- Focus on simplified interface / menu
+- Big wins -> handover guide (use winmerge initially - local doc creation later), auto-escalation
+	Full Repair, Repair Wall, Self-maintaining
+	Get Error Log (search for certain errors) [Part of auto-escalation?] <- output to gridview for search/filtering
+	Run data quality checks
+
+New feature - Walls 7.0 has command line installation (silent install). Add ability to install Walls on multiple servers using command line parameters?
+
+- Send Email to Steve at least once a week with updates
+- Target is mid-January for something to show 
+
+Show config.psd1
+Run SystemAdmin.ps1
+Show Get-WBWallType options
+	Get-WBWallType 1,3,2
+	Get-WBWallType 1,3,2 | format-list
+	Get-WBWallType 1,3,2 | Out-GridView
+	Get-WBWallType 1,3,2 | Select -Property OperatingSystemVersion,Model
+Run WriteHTML.ps1 to show generated HTML
+
+-------------------------------------------------------------------------
+
+Code Structure
+
+Module
+	Walls.psm1 - Module containing Wall cmdlet functions (advanced users can use these functions directly for additional flexibility)
+	Walls.psd1 - Module Manifest
+	SQLConfig.psd1 - SQL database connection info
+	NEED - SQL functions / Utility functions
+Script - Simple menu-based scripts for simple access to common functions with set output (CSV, HTML)
+	SystemAdmin.ps1
+	Walls.ps1
+	ExtensionServiceAdmin.ps1
+
+-------------------------------------------------------------------------
+
+Documentation Structure
+
+- Overview
+- Installation / configuration / Quick start
+- Menu functions (details about menu based items)
+- How to use Cmdlets (Advanced details about module) [Phase 2]
+- Suggesting Changes (creating issues on Github?) / Future enhancements
+- Contact us
+
+Add videos (if not too much effort)
+
+-------------------------------------------------------------------------
+
+Cmdlets / Advanced Functions
+--------------------
+Get-WBWallType
+Add-WBWallType
+Update-WBWallType
+Remove-WBWallType
+-
+Get-WBEntityUDF
+Update-WBEntityUDF
+Delete-WBEntityUDF
+-
+Get-WBWallUDF
+Update-WBWallUDF
+Delete-WBWallUDF
+-
+Repair-WBWall
+-
+Start-WBFullRepair
+-
+Start-WBSelfMaintaining
+-
+Get-WBConfig
+Update-WBConfig
+-
+Get-WBWallSideConfig
+-
+Get-WBAppPool
+Restart-WBAppPool
+-
+Get-WBExtensionServiceJob
+Restart-WBExtensionService
+Restart-WBScheduler
+-
+Get-WBErrorLog
+-
+Compare-WBWallsConfig
+-
+Build-WBAutoEscalation
+Build-WBHandoverGuide
+-
+Run-SQLQuery
+
+-------------------------------------------------------------------------
+
+Notes from PowerShell Studio application
+
+----- Functions by Category -----
+Wall Configuration
+	See Wall Types
+	Get Wall Details (Load TypeId)
+	Modify Wall details (change policy category, selfmaintaining, RequireAckForAccess)
+	Create New Wall Type
+	Delete Wall Type
+	See Entity UDFs
+	Update Entity UDF
+	Create Entity UDF
+	Delete Entity UDF
+	See Wall UDFs
+	Create Wall UDF
+	Update Wall UDF
+	Delete Wall UDF
+	Create Wall Role	
+	-------------------
+	Repair Wall
+	
+	PerformSelfMaintaining
+System Configuration
+	Compare Configs
+	Search Configs
+Extension Service
+	QueryExtensionServiceJobs (View ALL ExtensionServiceJobs)
+	Get Executing Extension Service Jobs
+	Restart All Extension Services
+	Start Full Repair for Extension
+	Get-EXTServices??
+	Export Extension Services	
+System Administration
+	InstallIISPrereqs
+	InstallExtensionServerPrereqs
+	RecycleAppPools
+	RestartSchedulerService
+Misc/Utility
+	Run data quality checks
+	Create Escalation
+	Generate Handover
+	Run SQL 
+API
+	Perform self-maintaining
+	Perform Full Repair
+	Create User
+	Repair Wall
+	
+
+
+-----ALL FUNCTIONS-----
+Add-JobTracker
+Update-JobTracker
+Stop-JobTracker
+
+$buttonExtensionServiceJobs_Click
+	QueryExtensionServiceJobs
+LoadChangeLog?
+RunDataQualityChecks [NOT USED]
+Invoke-SQL
+dataQualityChecks()
+generateHandoverGuide
+Invoke-SQL
+$buttonInstallIISServerPrer_Click
+	InstallPrereqs
+$buttonInstallExtensionServ_Click
+	InstallExtensionServer
+Recycle-AppPools
+Restart-WinService
+Get-EXTServices
+Restart-AllEXTService
+$buttonFullRepair_Click
+	StartFullRepairForExtension
+$buttonCreateUser_Click
+	CreateTestUser
+$buttonRepairWall_Click
+	RepairWall
+$buttonViewExecutingExtensi_Click
+	GetExecutingExtensionServiceJobs
+Get-SchedulerPath
+Get-WallsIISPaths
+Pull-LogFiles
+AutoEscalation
+dataQualityChecks()
+takeScreenshot($File)
+ExportConfigValuesAsCSV
+ExportEnabledExtensionConfigsAsCSV
+ExportExtensionServiceJobs
+ExportErrorLogAsCSV
+GetConfigsLike($input)
+$buttonLoadTypeId_Click
+	GetWallAccessTypes
+	UpdateWallAccessTypes
+	DeleteWallAccessTypes
+$buttonSeeEntityUDFs_Click
+	GetEntityCustomFieldConfigs
+	GetEntityCustomComboValues
+$buttonSeeWallUDFs_Click
+	GetWallCustomFieldConfig
+$buttonCompareConfiguration_Click
+	CompareConfigs
+Get-SystemENUMFromCategory($category)
+CreateWallRoleXML
+Add-WallRoleToAllWallTypes($wallRoleId)
+$buttonRestartSchedulerServ_Click
+	RestartSchedulerService
+$buttonPerformSelfMaintaini_Click
+	StartSelfMaintaining
+Get-Extensions
+$buttonGenerateWallRole_Click
+	GenerateWallRole
+
+

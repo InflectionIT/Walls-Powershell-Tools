@@ -1,0 +1,13 @@
+XX FIX - Update IIS prereqs command
+XX FIX - Investigate why Invoke-SqlCommand function is returning errors in PowerShell ISE
+XX Clean up folder to remove sample/test scripts
+XX Finish writing the Auto-Escalation feature
+XX Update Auto-escalation to mask username/password
+SKIP Add menu item to check database connection (this could be the first command run to ensure that the connection to the Walls database is working as expected)
+Finish writing documentation (include screenshots, etc.)
+    Update images in pages
+    Create short video for running scripts?
+    Change "news" articles
+Push everything to GitHub
+
+Discuss upgrade scope functionality (maybe Phase 2?)

@@ -1,0 +1,1061 @@
+﻿
+{ 
+    "email": "steve.surrette@inflectionIT.com",
+    "client_name": "InflectionIT", 
+    "version": "6.5.0.4", 
+    "SE": "Steve Surrette", 
+    "extensions": [
+    {
+        "Category":  "DM5SelfMaintaining"
+    },
+    {
+        "Category":  "Generic"
+    },
+    {
+        "Category":  "GenericInsidersSelfMaintaining"
+    },
+    {
+        "Category":  "GenericTimeEntrySelfMaintaining"
+    },
+    {
+        "Category":  "iManageSelfMaintaining"
+    },
+    {
+        "Category":  "Interwoven"
+    },
+    {
+        "Category":  "WebViewSelfMaintaining"
+    }
+],
+    "modules": [
+    {
+        "Category":  "Activity Tracker"
+    },
+    {
+        "Category":  "Foundational Policies"
+    },
+    {
+        "Category":  "Insiders"
+    },
+    {
+        "Category":  "Legal Holds"
+    },
+    {
+        "Category":  "Team Manager"
+    }
+], 
+    "cm_source": "Elite",  
+    "user_source": "Peoplesoft", 
+    "appusers": [
+    {
+        "Name":  "Administrator",
+        "Email":  "",
+        "Role":  "Administrator"
+    },
+    {
+        "Name":  "Steve Surrette",
+        "Email":  "steve.surrette@inflectionIT.com",
+        "Role":  "Administrator"
+    },
+    {
+        "Name":  "Jeff Armbrecht",
+        "Email":  "jeff.armbrecht@inflectionIT.com",
+        "Role":  "Administrator"
+    },
+    {
+        "Name":  "Walls Service Account",
+        "Email":  "blackhole@inflectionIT.com",
+        "Role":  "Administrator"
+    },
+    {
+        "Name":  "New User",
+        "Email":  "newuser@firm.com",
+        "Role":  "Editor"
+    },
+    {
+        "Name":  "New User",
+        "Email":  "newuser@firm.com",
+        "Role":  "Editor"
+    }
+],  
+    "IBversion": "5.0", 
+    "cm_db": "son_db", 	
+    "cm_server": "SFSQL", 
+    "user_db": "HR",
+    "user_server": "localhost",  
+    "connections": [
+    {
+        "Category":  "Interwoven",
+        "name":  "iManage",
+        "server":  "localhost",
+        "db":  "worksite"
+    },
+    {
+        "Category":  "GenericTimeEntrySelfMaintaining",
+        "name":  "Generic-SM",
+        "server":  "localhost",
+        "db":  "walls"
+    },
+    {
+        "Category":  "Generic",
+        "name":  "GenericExtension",
+        "server":  "localhost",
+        "db":  "GenericWB"
+    },
+    {
+        "Category":  "Generic",
+        "name":  "NG-9QCSML94",
+        "server":  "localhost",
+        "db":  "activitytracker"
+    },
+    {
+        "Category":  "GenericInsidersSelfMaintaining",
+        "name":  "DMS",
+        "server":  "localhost",
+        "db":  "worksite"
+    }
+], 
+    "schedules": [
+    {
+        "ConfigVariable":  "DM5SelfMaintaining::CronExpression",
+        "ConfigValue1":  "0 30 0 * * ?"
+    },
+    {
+        "ConfigVariable":  "Interwoven::IncrementalRepairCronExpression",
+        "ConfigValue1":  "0 0/5 * * * ?"
+    },
+    {
+        "ConfigVariable":  "Interwoven::FullRepairCronExpression",
+        "ConfigValue1":  "0 0 1 ? * SAT"
+    },
+    {
+        "ConfigVariable":  "iManageSelfMaintaining::CronExpression",
+        "ConfigValue1":  "0 30 1 * * ?"
+    },
+    {
+        "ConfigVariable":  "WebViewSelfMaintaining::CronExpression",
+        "ConfigValue1":  "0 30 0 * * ?"
+    },
+    {
+        "ConfigVariable":  "GenericTimeEntrySelfMaintaining::CronExpression",
+        "ConfigValue1":  "0 30 0 * * ?"
+    },
+    {
+        "ConfigVariable":  "Generic::FullRepairCronExpression",
+        "ConfigValue1":  "0 0 1 ? * SAT"
+    },
+    {
+        "ConfigVariable":  "GenericInsidersSelfMaintaining::CronExpression",
+        "ConfigValue1":  "0 30 0 * * ?"
+    }
+], 
+    "SQLVersion": "Microsoft SQL Server 2016 (RTM) - 13.0.1601.5 (X64) \n\tApr 29 2016 23:23:58 \n\tCopyright (c) Microsoft Corporation\n\tExpress Edition (64-bit) on Windows Server 2012 R2 Standard 6.3 \u003cX64\u003e (Build 9600: ) (Hypervisor)\n",
+    "SQLDB": "walls",
+    "SQLServer": "localhost",
+    "SQL_IP": "127.0.0.1",
+    "ServiceAccount": "Inflection\\Administrator",
+    "WindowsVersion": "Microsoft Windows Server 2012 R2 Standard",
+    "IIS_hostname": "WIN-I0ANQ01RF7C",
+    "IIS_IP": "172.31.43.173",
+    "IIS_Sites": [
+    {
+        "line":  "\u003e\r"
+    },
+    {
+        "line":  "\u003eName             ID   State      Physical Path                  Bindings       \r"
+    },
+    {
+        "line":  "\u003e----             --   -----      -------------                  --------       \r"
+    },
+    {
+        "line":  "\u003eDefault Web Site 1    Started    %SystemDrive%\\inetpub\\wwwroot  http *:80:     \r"
+    },
+    {
+        "line":  "\u003e                                                                net.pipe *     \r"
+    },
+    {
+        "line":  "\u003e                                                                net.msmq       \r"
+    },
+    {
+        "line":  "\u003e                                                                localhost      \r"
+    },
+    {
+        "line":  "\u003e                                                                msmq.formatname\r"
+    },
+    {
+        "line":  "\u003e                                                                 localhost     \r"
+    },
+    {
+        "line":  "\u003e                                                                net.tcp 808:*  \r"
+    },
+    {
+        "line":  "\u003ewordpress        2    Started    C:\\Users\\Administrator\\Desktop ftp *:21:      \r"
+    },
+    {
+        "line":  "\u003e                                 \\wordpress                                    \r"
+    },
+    {
+        "line":  "\u003e\r"
+    },
+    {
+        "line":  "\u003e\r"
+    },
+    {
+        "line":  "\u003e\r"
+    },
+    {
+        "line":  "\u003eType               Name                             Physical Path              \r"
+    },
+    {
+        "line":  "\u003e----               ----                             -------------              \r"
+    },
+    {
+        "line":  "\u003eapplication        ActivityTracker                  C:\\inetpub\\wwwroot\\Activity\r"
+    },
+    {
+        "line":  "\u003e                                                    Tracker                    \r"
+    },
+    {
+        "line":  "\u003eapplication        APIService                       C:\\inetpub\\wwwroot\\APIServi\r"
+    },
+    {
+        "line":  "\u003e                                                    ce                         \r"
+    },
+    {
+        "line":  "\u003eapplication        APIService60                     C:\\inetpub\\wwwroot\\APIServi\r"
+    },
+    {
+        "line":  "\u003e                                                    ce60                       \r"
+    },
+    {
+        "line":  "\u003eapplication        APIService61                     C:\\inetpub\\wwwroot\\APIServi\r"
+    },
+    {
+        "line":  "\u003e                                                    ce61                       \r"
+    },
+    {
+        "line":  "\u003eapplication        CentralAdministration            C:\\inetpub\\wwwroot\\CentralA\r"
+    },
+    {
+        "line":  "\u003e                                                    dministration              \r"
+    },
+    {
+        "line":  "\u003eapplication        eLearning                        C:\\inetpub\\wwwroot\\eLearnin\r"
+    },
+    {
+        "line":  "\u003e                                                    g                          \r"
+    },
+    {
+        "line":  "\u003eapplication        MatterTeamManager                C:\\inetpub\\wwwroot\\MatterTe\r"
+    },
+    {
+        "line":  "\u003e                                                    amManager                  \r"
+    },
+    {
+        "line":  "\u003eapplication        MSMQ                             C:\\inetpub\\wwwroot\\msmq    \r"
+    },
+    {
+        "line":  "\u003eapplication        TrainingVideos                   C:\\inetpub\\wwwroot\\Training\r"
+    },
+    {
+        "line":  "\u003e                                                    Videos                     \r"
+    },
+    {
+        "line":  "\u003eapplication        upload                           C:\\inetpub\\wwwroot\\upload  \r"
+    },
+    {
+        "line":  "\u003eapplication        walls                            C:\\inetpub\\wwwroot\\walls   \r"
+    },
+    {
+        "line":  "\u003eapplication        walls5                           C:\\inetpub\\wwwroot\\walls5  \r"
+    },
+    {
+        "line":  "\u003eapplication        walls6                           C:\\inetpub\\wwwroot\\walls6  \r"
+    },
+    {
+        "line":  "\u003eapplication        walls7                           C:\\inetpub\\wwwroot\\walls7  \r"
+    },
+    {
+        "line":  "\u003eapplication        WBWebParts                       C:\\inetpub\\wwwroot\\WBWebPar\r"
+    },
+    {
+        "line":  "\u003e                                                    ts                         \r"
+    },
+    {
+        "line":  "\u003eapplication        WBWebPartsBaker                  C:\\inetpub\\wwwroot\\WBWebPar\r"
+    },
+    {
+        "line":  "\u003e                                                    tsBaker                    \r"
+    },
+    {
+        "line":  "\u003eapplication        WBWebPartsCooley                 C:\\inetpub\\wwwroot\\WBWebPar\r"
+    },
+    {
+        "line":  "\u003e                                                    tsCooley                   \r"
+    },
+    {
+        "line":  "\u003eapplication        WBWebPartsGDC                    C:\\inetpub\\wwwroot\\WBWebPar\r"
+    },
+    {
+        "line":  "\u003e                                                    tsGDC                      \r"
+    },
+    {
+        "line":  "\u003eapplication        WBWebPartsKLG                    C:\\inetpub\\wwwroot\\WBWebPar\r"
+    },
+    {
+        "line":  "\u003e                                                    tsKLG                      \r"
+    },
+    {
+        "line":  "\u003e\r"
+    },
+    {
+        "line":  "\u003e\r"
+    },
+    {
+        "line":  "\u003e"
+    }
+],
+    "IIS_AppPools": [
+    {
+        "line":  "\u003e\r"
+    },
+    {
+        "line":  "\u003eName                     State        Applications                             \r"
+    },
+    {
+        "line":  "\u003e----                     -----        ------------                             \r"
+    },
+    {
+        "line":  "\u003e.NET v4.5                Started                                               \r"
+    },
+    {
+        "line":  "\u003e.NET v4.5 Classic        Started                                               \r"
+    },
+    {
+        "line":  "\u003eASP.NET v4.0             Started      /ActivityTracker                         \r"
+    },
+    {
+        "line":  "\u003eActivityTrackerAppPool                                                         \r"
+    },
+    {
+        "line":  "\u003eASP.NET v4.0             Started      /APIService61                            \r"
+    },
+    {
+        "line":  "\u003eAPIServiceAppPool                     /APIService60                            \r"
+    },
+    {
+        "line":  "\u003e                                      /APIService                              \r"
+    },
+    {
+        "line":  "\u003eASP.NET v4.0             Started      /CentralAdministration                   \r"
+    },
+    {
+        "line":  "\u003eCentralAdminAppPool                                                            \r"
+    },
+    {
+        "line":  "\u003eASP.NET v4.0             Started                                               \r"
+    },
+    {
+        "line":  "\u003eMatterTeamManagerAppPool                                                       \r"
+    },
+    {
+        "line":  "\u003eASP.NET v4.0             Started      /MatterTeamManager                       \r"
+    },
+    {
+        "line":  "\u003eTeamManagerAppPool                                                             \r"
+    },
+    {
+        "line":  "\u003eASP.NET v4.0             Started      Default Web Site                         \r"
+    },
+    {
+        "line":  "\u003eWallsAppPool                          /WBWebParts                              \r"
+    },
+    {
+        "line":  "\u003e                                      /WBWebPartsCooley                        \r"
+    },
+    {
+        "line":  "\u003e                                      /WBWebPartsBaker                         \r"
+    },
+    {
+        "line":  "\u003e                                      /WBWebPartsGDC                           \r"
+    },
+    {
+        "line":  "\u003e                                      /walls5                                  \r"
+    },
+    {
+        "line":  "\u003e                                      /walls6                                  \r"
+    },
+    {
+        "line":  "\u003e                                      /walls7                                  \r"
+    },
+    {
+        "line":  "\u003e                                      /walls                                   \r"
+    },
+    {
+        "line":  "\u003e                                      /WBWebPartsKLG                           \r"
+    },
+    {
+        "line":  "\u003eDefaultAppPool           Started      wordpress                                \r"
+    },
+    {
+        "line":  "\u003e                                      /MSMQ                                    \r"
+    },
+    {
+        "line":  "\u003e                                      /TrainingVideos                          \r"
+    },
+    {
+        "line":  "\u003e                                      /upload                                  \r"
+    },
+    {
+        "line":  "\u003e                                      /eLearning                               \r"
+    },
+    {
+        "line":  "\u003e\r"
+    },
+    {
+        "line":  "\u003e\r"
+    },
+    {
+        "line":  "\u003e"
+    }
+],
+    "EXTServers": [
+    {
+        "Server":  "WIN-I0ANQ01RF7C.Inflection.local",
+        "IP":  "172.31.43.173"
+    }
+],
+    "SRTtext": "Yes, installed on IIS server",
+    "customizations": [
+    {
+        "line":  "None"
+    }
+],
+    "configs": [
+    {
+        "ConfigVariable":  "ActivityRetentionDays",
+        "ConfigValue1":  "90",
+        "ConfigValue2":  null,
+        "Category":  "Activity Tracker"
+    },
+    {
+        "ConfigVariable":  "ActivityRetentionPolicyCronExpression",
+        "ConfigValue1":  "0 0 2 * * ?",
+        "ConfigValue2":  null,
+        "Category":  "Activity Tracker"
+    },
+    {
+        "ConfigVariable":  "ActivityTrackerApplicationURL",
+        "ConfigValue1":  "http://WIN-I0ANQ01RF7C/ActivityTracker/",
+        "ConfigValue2":  null,
+        "Category":  "Activity Tracker"
+    },
+    {
+        "ConfigVariable":  "ActivityTrackerMessageQueue",
+        "ConfigValue1":  "\u0026lt;receivers\u0026gt;\u0026lt;receiver\u0026gt;IntappATQueue@54.70.213.89\u0026lt;/receiver\u0026gt;\u0026lt;receiver\u0026gt;IntappATQueue@54.70.213.89.Inflection.local\u0026lt;/receiver\u0026gt;\u0026lt;receiver\u0026gt;IntappATQueue@WIN-I0ANQ01RF7C.Inflection.local\u0026lt;/receiver\u0026gt;\u0026lt;/receivers\u0026gt;",
+        "ConfigValue2":  null,
+        "Category":  "Activity Tracker"
+    },
+    {
+        "ConfigVariable":  "CalculateStatisticsCronExpression",
+        "ConfigValue1":  "0 03 3 * * ?",
+        "ConfigValue2":  null,
+        "Category":  "Activity Tracker"
+    },
+    {
+        "ConfigVariable":  "DefaultAlertThresholdLimit",
+        "ConfigValue1":  "0",
+        "ConfigValue2":  null,
+        "Category":  "Activity Tracker"
+    },
+    {
+        "ConfigVariable":  "ExecuteTrackersCronExpression",
+        "ConfigValue1":  "0 0/1 * * * ?",
+        "ConfigValue2":  null,
+        "Category":  "Activity Tracker"
+    },
+    {
+        "ConfigVariable":  "ImportActivityBeforeTrackerExecution",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "Activity Tracker"
+    },
+    {
+        "ConfigVariable":  "ImportActivityCronExpression",
+        "ConfigValue1":  "0 30 2 * * ?",
+        "ConfigValue2":  null,
+        "Category":  "Activity Tracker"
+    },
+    {
+        "ConfigVariable":  "IntermediateDbConnectionString",
+        "ConfigValue1":  "server=\"(local)\";database=\"ActivityTracker\";Integrated Security=SSPI;",
+        "ConfigValue2":  null,
+        "Category":  "Activity Tracker"
+    },
+    {
+        "ConfigVariable":  "ThresholdMaxAlerts",
+        "ConfigValue1":  "250",
+        "ConfigValue2":  null,
+        "Category":  "Activity Tracker"
+    },
+    {
+        "ConfigVariable":  "DM5SelfMaintaining::CronExpression",
+        "ConfigValue1":  "0 30 0 * * ?",
+        "ConfigValue2":  null,
+        "Category":  "DM5SelfMaintaining"
+    },
+    {
+        "ConfigVariable":  "DM5SelfMaintaining::IsActive",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "DM5SelfMaintaining"
+    },
+    {
+        "ConfigVariable":  "Generic::FullRepairCronExpression",
+        "ConfigValue1":  "0 0 1 ? * SAT",
+        "ConfigValue2":  null,
+        "Category":  "Generic"
+    },
+    {
+        "ConfigVariable":  "Generic::IsActive",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "Generic"
+    },
+    {
+        "ConfigVariable":  "Generic::LibraryXML",
+        "ConfigValue1":  "\u0026lt;libraries\u0026gt;\n  \u0026lt;library\u0026gt;\n    \u0026lt;name\u0026gt;GenericExtension\u0026lt;/name\u0026gt;\n    \u0026lt;connectString\u0026gt;server=localhost;database=GenericWB;Integrated Security=SSPI\u0026lt;/connectString\u0026gt;\n    \u0026lt;entityRemoteIdSource\u0026gt;DMS\u0026lt;/entityRemoteIdSource\u0026gt;\n    \u0026lt;userRemoteIdSource\u0026gt;DMS\u0026lt;/userRemoteIdSource\u0026gt;\n  \u0026lt;/library\u0026gt;\n    \u0026lt;library secured=\"0\" monitored=\"1\"\u0026gt;\n    \u0026lt;name\u0026gt;NG-9QCSML94\u0026lt;/name\u0026gt;\n    \u0026lt;connectString\u0026gt;Data Source=localhost;Initial Catalog=activitytracker;Integrated Security=SSPI;\u0026lt;/connectString\u0026gt;\n    \u0026lt;entityRemoteIdSource\u0026gt;DMS\u0026lt;/entityRemoteIdSource\u0026gt;\n    \u0026lt;userRemoteIdSource\u0026gt;CRM\u0026lt;/userRemoteIdSource\u0026gt;\n  \u0026lt;/library\u0026gt;\n\u0026lt;/libraries\u0026gt;",
+        "ConfigValue2":  null,
+        "Category":  "Generic"
+    },
+    {
+        "ConfigVariable":  "Generic::SecureFoundationalPolicies",
+        "ConfigValue1":  "0",
+        "ConfigValue2":  null,
+        "Category":  "Generic"
+    },
+    {
+        "ConfigVariable":  "GenericInsidersSelfMaintaining::CronExpression",
+        "ConfigValue1":  "0 30 0 * * ?",
+        "ConfigValue2":  null,
+        "Category":  "GenericInsidersSelfMaintaining"
+    },
+    {
+        "ConfigVariable":  "GenericInsidersSelfMaintaining::IsActive",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "GenericInsidersSelfMaintaining"
+    },
+    {
+        "ConfigVariable":  "GenericInsidersSelfMaintaining::LibraryXML",
+        "ConfigValue1":  "\u0026lt;libraries\u0026gt;\r\n\u0026lt;library utcTime=\"true\"\u0026gt;\r\n\u0026lt;name\u0026gt;DMS\u0026lt;/name\u0026gt;\r\n\u0026lt;connectString\u0026gt;server=localhost;database=worksite;Integrated Security=SSPI\u0026lt;/connectString\u0026gt;\r\n\u0026lt;entityRemoteIdSource\u0026gt;DMS\u0026lt;/entityRemoteIdSource\u0026gt;\r\n\u0026lt;userRemoteIdSource\u0026gt;DMS\u0026lt;/userRemoteIdSource\u0026gt;\r\n\u0026lt;/library\u0026gt;\r\n\u0026lt;/libraries\u0026gt;",
+        "ConfigValue2":  null,
+        "Category":  "GenericInsidersSelfMaintaining"
+    },
+    {
+        "ConfigVariable":  "GenericTimeEntrySelfMaintaining::CronExpression",
+        "ConfigValue1":  "0 30 0 * * ?",
+        "ConfigValue2":  "",
+        "Category":  "GenericTimeEntrySelfMaintaining"
+    },
+    {
+        "ConfigVariable":  "GenericTimeEntrySelfMaintaining::IsActive",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "GenericTimeEntrySelfMaintaining"
+    },
+    {
+        "ConfigVariable":  "GenericTimeEntrySelfMaintaining::LibraryXML",
+        "ConfigValue1":  "\u0026lt;libraries\u0026gt;   \u0026lt;library\u0026gt;     \u0026lt;name\u0026gt;               Generic-SM         \u0026lt;/name\u0026gt;     \u0026lt;connectString\u0026gt;              server=localhost;database=walls;Integrated Security=SSPI         \u0026lt;/connectString\u0026gt;   \u0026lt;/library\u0026gt; \u0026lt;/libraries\u0026gt;",
+        "ConfigValue2":  null,
+        "Category":  "GenericTimeEntrySelfMaintaining"
+    },
+    {
+        "ConfigVariable":  "GenericTimeEntrySelfMaintaining::RemoteIDSource",
+        "ConfigValue1":  "TimeEntry",
+        "ConfigValue2":  "",
+        "Category":  "GenericTimeEntrySelfMaintaining"
+    },
+    {
+        "ConfigVariable":  "iManageSelfMaintaining::CronExpression",
+        "ConfigValue1":  "0 30 1 * * ?",
+        "ConfigValue2":  null,
+        "Category":  "iManageSelfMaintaining"
+    },
+    {
+        "ConfigVariable":  "iManageSelfMaintaining::IsActive",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "iManageSelfMaintaining"
+    },
+    {
+        "ConfigVariable":  "InsidersDefaultAddReason",
+        "ConfigValue1":  "Due to time entry or document access",
+        "ConfigValue2":  null,
+        "Category":  "Insiders"
+    },
+    {
+        "ConfigVariable":  "InsidersDefaultRemoveReason",
+        "ConfigValue1":  "User removed from wall for default reason",
+        "ConfigValue2":  null,
+        "Category":  "Insiders"
+    },
+    {
+        "ConfigVariable":  "InsidersHeaderFieldsXML",
+        "ConfigValue1":  "\u0026lt;definition\u0026gt;\u0026lt;fields\u0026gt;\u0026lt;field id=\"1\"/\u0026gt;\u0026lt;field id=\"3\"/\u0026gt;\u0026lt;field id=\"2\"/\u0026gt;\u0026lt;field id=\"4\"/\u0026gt;\u0026lt;field id=\"5\"/\u0026gt;\u0026lt;field id=\"6\"/\u0026gt;\u0026lt;field id=\"CustomField1\"/\u0026gt;\u0026lt;field id=\"CustomField2\"/\u0026gt;\u0026lt;field id=\"CustomField3\"/\u0026gt;\u0026lt;field id=\"CustomField4\"/\u0026gt;\u0026lt;field id=\"CustomField5\"/\u0026gt;\u0026lt;field id=\"CustomField6\"/\u0026gt;\u0026lt;field id=\"CustomField7\"/\u0026gt;\u0026lt;field id=\"CustomField8\"/\u0026gt;\u0026lt;field id=\"CustomField9\"/\u0026gt;\u0026lt;field id=\"CustomField10\"/\u0026gt;\u0026lt;field id=\"CustomField11\"/\u0026gt;\u0026lt;field id=\"CustomField12\"/\u0026gt;\u0026lt;field id=\"CustomField13\"/\u0026gt;\u0026lt;field id=\"CustomField14\"/\u0026gt;\u0026lt;field id=\"CustomField15\"/\u0026gt;\u0026lt;field id=\"CustomField16\"/\u0026gt;\u0026lt;field id=\"CustomField17\"/\u0026gt;\u0026lt;field id=\"CustomField18\"/\u0026gt;\u0026lt;field id=\"CustomField19\"/\u0026gt;\u0026lt;field id=\"CustomField20\"/\u0026gt;\u0026lt;field id=\"CustomField21\"/\u0026gt;\u0026lt;field id=\"CustomField22\"/\u0026gt;\u0026lt;field id=\"CustomField23\"/\u0026gt;\u0026lt;field id=\"CustomField24\"/\u0026gt;\u0026lt;field id=\"CustomField25\"/\u0026gt;\u0026lt;field id=\"CustomField26\"/\u0026gt;\u0026lt;field id=\"CustomField27\"/\u0026gt;\u0026lt;field id=\"CustomField28\"/\u0026gt;\u0026lt;field id=\"CustomField29\"/\u0026gt;\u0026lt;field id=\"CustomField30\"/\u0026gt;\u0026lt;/fields\u0026gt;\u0026lt;/definition\u0026gt;",
+        "ConfigValue2":  null,
+        "Category":  "Insiders"
+    },
+    {
+        "ConfigVariable":  "InsidersHeaderLogo",
+        "ConfigValue1":  "images/Intapp_logo_RGB_small.png",
+        "ConfigValue2":  null,
+        "Category":  "Insiders"
+    },
+    {
+        "ConfigVariable":  "InsidersHeaderText",
+        "ConfigValue1":  "Insiders List Generated in Compliance with the Market Abuse Regulation",
+        "ConfigValue2":  null,
+        "Category":  "Insiders"
+    },
+    {
+        "ConfigVariable":  "InsidersReportFieldsXml",
+        "ConfigValue1":  "\u0026lt;?xml version=\"1.0\" encoding=\"utf-16\"?\u0026gt;\u0026lt;definition\u0026gt;\u0026lt;fields\u0026gt;\u0026lt;field id=\"8\" entityTypeId=\"1\" /\u0026gt;\u0026lt;field id=\"9\" entityTypeId=\"\" /\u0026gt;\u0026lt;field id=\"10\" entityTypeId=\"\" /\u0026gt;\u0026lt;field id=\"11\" entityTypeId=\"\" /\u0026gt;\u0026lt;field id=\"CustomField3\" entityTypeId=\"1\" /\u0026gt;\u0026lt;field id=\"CustomField3\" entityTypeId=\"12\" /\u0026gt;\u0026lt;field id=\"12\" entityTypeId=\"\" /\u0026gt;\u0026lt;field id=\"CustomField1\" entityTypeId=\"1\" /\u0026gt;\u0026lt;field id=\"CustomField1\" entityTypeId=\"12\" /\u0026gt;\u0026lt;/fields\u0026gt;\u0026lt;sorting\u0026gt;\u0026lt;field id=\"CustomField3\" entityTypeId=\"1\" /\u0026gt;\u0026lt;direction\u0026gt;Ascending\u0026lt;/direction\u0026gt;\u0026lt;/sorting\u0026gt;\u0026lt;/definition\u0026gt;",
+        "ConfigValue2":  null,
+        "Category":  "Insiders"
+    },
+    {
+        "ConfigVariable":  "PermanentInsidersDefaultAddReason",
+        "ConfigValue1":  "User added to permanent access role.",
+        "ConfigValue2":  null,
+        "Category":  "Insiders"
+    },
+    {
+        "ConfigVariable":  "PermanentInsidersDefaultRemoveReason",
+        "ConfigValue1":  "User removed from permanent access role.",
+        "ConfigValue2":  null,
+        "Category":  "Insiders"
+    },
+    {
+        "ConfigVariable":  "PermanentInsidersHeaderFieldsXml",
+        "ConfigValue1":  "\u0026lt;?xml version=\"1.0\" encoding=\"ISO-8859-1\"?\u0026gt;\r\n\u0026lt;definition\u0026gt;\r\n  \u0026lt;fields\u0026gt;\r\n    \u0026lt;field id=\"13\" /\u0026gt;\r\n    \u0026lt;field id=\"14\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField1\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField2\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField3\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField4\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField5\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField6\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField7\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField8\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField9\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField10\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField11\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField12\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField13\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField14\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField15\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField16\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField17\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField18\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField19\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField20\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField21\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField22\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField23\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField24\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField25\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField26\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField27\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField28\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField29\" /\u0026gt;\r\n    \u0026lt;field id=\"CustomField30\" /\u0026gt;\r\n  \u0026lt;/fields\u0026gt;\r\n\u0026lt;/definition\u0026gt;",
+        "ConfigValue2":  null,
+        "Category":  "Insiders"
+    },
+    {
+        "ConfigVariable":  "PermanentInsidersHeaderText",
+        "ConfigValue1":  "Permanent Insiders List Generated in Compliance with the Market Abuse Regulation",
+        "ConfigValue2":  null,
+        "Category":  "Insiders"
+    },
+    {
+        "ConfigVariable":  "Interwoven::AllowExternalUsersAndGroups",
+        "ConfigValue1":  "0",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::AuditEmails",
+        "ConfigValue1":  "",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::ContentSecurityColumn",
+        "ConfigValue1":  "",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::ContractorGrantAccessRight",
+        "ConfigValue1":  "3",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::ContractorGroupsOnPrivateObjects",
+        "ConfigValue1":  "0",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::DisableFoundationalType",
+        "ConfigValue1":  "Standard",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::DisableInclusionaryType",
+        "ConfigValue1":  "Standard",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::DocExceptionsColumn",
+        "ConfigValue1":  "",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::DocumentsPerChunk",
+        "ConfigValue1":  "50",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::EnabledUTC",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::FoundationalAlterAccessRight",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::FoundationalGrantAccessRight",
+        "ConfigValue1":  "3",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::FullRepairCronExpression",
+        "ConfigValue1":  "0 0 1 ? * SAT",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::GrantAccessRight",
+        "ConfigValue1":  "3",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::IgnoredDocumentsXML",
+        "ConfigValue1":  "\u0026lt;objectExpression\u0026gt;\n\u0026lt;/objectExpression\u0026gt;",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::IgnoredDocumentTypesXML",
+        "ConfigValue1":  "\u0026lt;documentTypes\u0026gt;\n\u0026lt;/documentTypes\u0026gt;",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::IgnoredGroupName",
+        "ConfigValue1":  "",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::IgnoredWorkspacesAndFoldersXML",
+        "ConfigValue1":  "\u0026lt;objectExpression\u0026gt;\u0026lt;/objectExpression\u0026gt;",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::IncrementalRepairCronExpression",
+        "ConfigValue1":  "0 0/5 * * * ?",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::IncrementalRepairWorkspacesAndFolders",
+        "ConfigValue1":  "0",
+        "ConfigValue2":  "Interwoven Workspace Security",
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::IsActive",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::LastRepairSecondsToOverlap",
+        "ConfigValue1":  "0",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::LegalHoldColumn",
+        "ConfigValue1":  "",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::LibraryXML",
+        "ConfigValue1":  "\u0026lt;libraries\u0026gt;\n  \u0026lt;library secured=\"1\" monitored=\"1\"\u0026gt;\n    \u0026lt;name\u0026gt;\niManage\n\u0026lt;/name\u0026gt;\n    \u0026lt;connectString\u0026gt;server=localhost;database=worksite;Integrated Security=SSPI\n\u0026lt;/connectString\u0026gt;\n  \u0026lt;/library\u0026gt;\n\u0026lt;/libraries\u0026gt;",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::MasterLibrary",
+        "ConfigValue1":  "",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::MonitoredActivityTypeXML",
+        "ConfigValue1":  "\u0026lt;types\u0026gt;\u0026lt;type\u0026gt;7\u0026lt;/type\u0026gt;\u0026lt;type\u0026gt;4\u0026lt;/type\u0026gt;\u0026lt;type\u0026gt;6\u0026lt;/type\u0026gt;\u0026lt;type\u0026gt;8\u0026lt;/type\u0026gt;\u0026lt;/types\u0026gt;",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::PermissionsXML",
+        "ConfigValue1":  "\u0026lt;permissionLevels\u0026gt;\n  \u0026lt;permissionLevel\u0026gt;\n    \u0026lt;name\u0026gt;READ\u0026lt;/name\u0026gt;\n    \u0026lt;value\u0026gt;1\u0026lt;/value\u0026gt;\n    \u0026lt;permissivenessRank\u0026gt;1\u0026lt;/permissivenessRank\u0026gt;\n  \u0026lt;/permissionLevel\u0026gt;\n  \u0026lt;permissionLevel\u0026gt;\n    \u0026lt;name\u0026gt;READWRITE\u0026lt;/name\u0026gt;\n    \u0026lt;value\u0026gt;2\u0026lt;/value\u0026gt;\n    \u0026lt;permissivenessRank\u0026gt;2\u0026lt;/permissivenessRank\u0026gt;\n  \u0026lt;/permissionLevel\u0026gt;\n  \u0026lt;permissionLevel\u0026gt;\n    \u0026lt;name\u0026gt;FULLACCESS\u0026lt;/name\u0026gt;\n    \u0026lt;value\u0026gt;3\u0026lt;/value\u0026gt;\n    \u0026lt;permissivenessRank\u0026gt;3\u0026lt;/permissivenessRank\u0026gt;\n  \u0026lt;/permissionLevel\u0026gt;\n\u0026lt;/permissionLevels\u0026gt;",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::PowerUserGroupsXML",
+        "ConfigValue1":  "\u0026lt;groups\u0026gt;\n  \u0026lt;group\u0026gt;WordProcessors\u0026lt;/group\u0026gt;\n  \u0026lt;group\u0026gt;Finance\u0026lt;/group\u0026gt;\n  \u0026lt;group\u0026gt;WallsAdmin\u0026lt;/group\u0026gt;\n\u0026lt;/groups\u0026gt;",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::ProcessQuickRetrieve",
+        "ConfigValue1":  "0",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::RepairContractorGrantAccessRight",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::RepairFoundationalGrantAccessRight",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::RepairGrantAccessRight",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::SecureFoundationalPolicies",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::SecureLegalHolds",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::SecureWorkspacesAndFolders",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  "Interwoven Workspace Security",
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::SecurityBreachIgnoredUsersXML",
+        "ConfigValue1":  "\u0026lt;users\u0026gt;\u0026lt;/users\u0026gt;",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::UpdateDocHistory",
+        "ConfigValue1":  "0",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::UpdateLegalHoldDocHistory",
+        "ConfigValue1":  "0",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "Interwoven::Username",
+        "ConfigValue1":  "INTERWOVEN",
+        "ConfigValue2":  null,
+        "Category":  "Interwoven"
+    },
+    {
+        "ConfigVariable":  "LegalHolds::DefaultSelfMaintainingMinHours",
+        "ConfigValue1":  "0",
+        "ConfigValue2":  null,
+        "Category":  "Legal Holds"
+    },
+    {
+        "ConfigVariable":  "DefaultTeamRole",
+        "ConfigValue1":  "",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "DefaultTeamSelfMaintainingIntervalType",
+        "ConfigValue1":  "Fixed Lookback And Ongoing",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "DefaultTeamVisibility",
+        "ConfigValue1":  "3",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "DefaultTeamWallVisibility",
+        "ConfigValue1":  "3",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "EnabledAddTeamButtonExclusionary",
+        "ConfigValue1":  "0",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "EnabledAutoAddTeams",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  "Auto Adding Teams",
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "EnabledSelfMaintainingForTeamAdmins",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "EnabledTeamAutoJoinEmail",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "EnabledTeamHistoryConflictValidation",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "EnabledTeamNotifications",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "EnabledTeamTimeEntryData",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "TeamAutoJoinEmailHeaderText",
+        "ConfigValue1":  "Please review the following team user addition:",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "TeamAutoJoinEmailRejectAdditionHyperlinkText",
+        "ConfigValue1":  "Reject Addition",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "TeamEmailMaxRecipients",
+        "ConfigValue1":  "50",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "TeamInactiveMemberAdditionText",
+        "ConfigValue1":  "User {username} will be added in an inactive state due to an existing wall.",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "TeamInactiveMemberHoverText",
+        "ConfigValue1":  "This team member is inactive because the user is excluded by an existing wall.",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "TeamManagerApplicationUrl",
+        "ConfigValue1":  "http://WIN-I0ANQ01RF7C/MatterTeamManager/",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "TeamManagerMessageQueue",
+        "ConfigValue1":  "\u0026lt;receivers\u0026gt;\n  \u0026lt;receiver\u0026gt;IntappMTMQueue@WIN-I0ANQ01RF7C.Inflection.local\u0026lt;/receiver\u0026gt;\n\u0026lt;/receivers\u0026gt;",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "TeamSubscriptionApproveRequestHyperlinkText",
+        "ConfigValue1":  "Approve Request",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "TeamSubscriptionDenyRequestHyperlinkText",
+        "ConfigValue1":  "Deny Request",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "TeamSubscriptionRequestHeaderText",
+        "ConfigValue1":  "Please review the following team access request:",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "TeamSubscriptionRequestInterval",
+        "ConfigValue1":  "10",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "TeamSubscriptionRequireReason",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "TeamSubscriptionText",
+        "ConfigValue1":  "You have requested to join this team. Are you sure?",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "TeamSubscriptionType",
+        "ConfigValue1":  "AUTO",
+        "ConfigValue2":  null,
+        "Category":  "Team Manager"
+    },
+    {
+        "ConfigVariable":  "WebView::IncludeUnfinalizedTimeEntries",
+        "ConfigValue1":  "0",
+        "ConfigValue2":  null,
+        "Category":  "WebViewSelfMaintaining"
+    },
+    {
+        "ConfigVariable":  "WebViewSelfMaintaining::CronExpression",
+        "ConfigValue1":  "0 30 0 * * ?",
+        "ConfigValue2":  null,
+        "Category":  "WebViewSelfMaintaining"
+    },
+    {
+        "ConfigVariable":  "WebViewSelfMaintaining::IsActive",
+        "ConfigValue1":  "1",
+        "ConfigValue2":  null,
+        "Category":  "WebViewSelfMaintaining"
+    }
+]
+
+}

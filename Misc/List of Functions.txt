@@ -1,0 +1,123 @@
+----- File Design -----
+Common/reusable code in Modules (https://docs.microsoft.com/en-us/powershell/developer/module/understanding-a-windows-powershell-module)
+	SQL.psm1
+Configuration in Data file (.psd1) (https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/import-powershelldatafile?view=powershell-5.0)
+	SQL connection string (server, db, user, password)
+	API endpoints
+Core functionality in scripts
+	System Administration (IIS, App pools, etc)
+	Extension Service tasks
+	Wall configuration
+	System configuration
+	Data checks
+
+
+----- Functions by Category -----
+Wall Configuration
+	See Wall Types
+	Get Wall Details (Load TypeId)
+	Modify Wall details (change policy category, selfmaintaining, RequireAckForAccess)
+	Create New Wall Type
+	Delete Wall Type
+	See Entity UDFs
+	Update Entity UDF
+	Create Entity UDF
+	Delete Entity UDF
+	See Wall UDFs
+	Create Wall UDF
+	Update Wall UDF
+	Delete Wall UDF
+	Create Wall Role	
+	-------------------
+	Repair Wall
+	
+	PerformSelfMaintaining
+System Configuration
+	Compare Configs
+	Search Configs
+Extension Service
+	QueryExtensionServiceJobs (View ALL ExtensionServiceJobs)
+	Get Executing Extension Service Jobs
+	Restart All Extension Services
+	Start Full Repair for Extension
+	Get-EXTServices??
+	Export Extension Services	
+System Administration
+	InstallIISPrereqs
+	InstallExtensionServerPrereqs
+	RecycleAppPools
+	RestartSchedulerService
+Misc/Utility
+	Run data quality checks
+	Create Escalation
+	Generate Handover
+	Run SQL 
+API
+	Perform self-maintaining
+	Perform Full Repair
+	Create User
+	Repair Wall
+	
+
+
+-----ALL FUNCTIONS-----
+Add-JobTracker
+Update-JobTracker
+Stop-JobTracker
+
+$buttonExtensionServiceJobs_Click
+	QueryExtensionServiceJobs
+LoadChangeLog?
+RunDataQualityChecks [NOT USED]
+Invoke-SQL
+dataQualityChecks()
+generateHandoverGuide
+Invoke-SQL
+$buttonInstallIISServerPrer_Click
+	InstallPrereqs
+$buttonInstallExtensionServ_Click
+	InstallExtensionServer
+Recycle-AppPools
+Restart-WinService
+Get-EXTServices
+Restart-AllEXTService
+$buttonFullRepair_Click
+	StartFullRepairForExtension
+$buttonCreateUser_Click
+	CreateTestUser
+$buttonRepairWall_Click
+	RepairWall
+$buttonViewExecutingExtensi_Click
+	GetExecutingExtensionServiceJobs
+Get-SchedulerPath
+Get-WallsIISPaths
+Pull-LogFiles
+AutoEscalation
+dataQualityChecks()
+takeScreenshot($File)
+ExportConfigValuesAsCSV
+ExportEnabledExtensionConfigsAsCSV
+ExportExtensionServiceJobs
+ExportErrorLogAsCSV
+GetConfigsLike($input)
+$buttonLoadTypeId_Click
+	GetWallAccessTypes
+	UpdateWallAccessTypes
+	DeleteWallAccessTypes
+$buttonSeeEntityUDFs_Click
+	GetEntityCustomFieldConfigs
+	GetEntityCustomComboValues
+$buttonSeeWallUDFs_Click
+	GetWallCustomFieldConfig
+$buttonCompareConfiguration_Click
+	CompareConfigs
+Get-SystemENUMFromCategory($category)
+CreateWallRoleXML
+Add-WallRoleToAllWallTypes($wallRoleId)
+$buttonRestartSchedulerServ_Click
+	RestartSchedulerService
+$buttonPerformSelfMaintaini_Click
+	StartSelfMaintaining
+Get-Extensions
+$buttonGenerateWallRole_Click
+	GenerateWallRole
